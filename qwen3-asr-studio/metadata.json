@@ -1,0 +1,8 @@
+
+{
+  "name": "Qwen3-ASR Studio",
+  "description": "An advanced speech-to-text platform powered by the Qwen3-ASR model. Users can transcribe audio by uploading files or recording directly, experiencing fast and accurate transcription services with support for multiple languages and contexts.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

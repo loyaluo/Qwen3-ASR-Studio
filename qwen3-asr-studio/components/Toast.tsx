@@ -1,14 +1,14 @@
-
 import React, { useEffect } from 'react';
 import { CloseIcon } from './icons/CloseIcon';
 
 interface ToastProps {
   message: string;
   onClose: () => void;
+  type?: 'error' | 'success';
   duration?: number;
 }
 
-export const Toast: React.FC<ToastProps> = ({ message, onClose, duration = 5000 }) => {
+export const Toast: React.FC<ToastProps> = ({ message, onClose, type = 'error', duration = 5000 }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
@@ -19,10 +19,16 @@ export const Toast: React.FC<ToastProps> = ({ message, onClose, duration = 5000 
     };
   }, [onClose, duration]);
 
+  const baseClasses = "fixed bottom-5 right-5 w-full max-w-sm p-4 text-white rounded-lg shadow-lg flex items-start justify-between animate-fade-in-up";
+  const typeClasses = type === 'error'
+    ? 'bg-red-600'
+    : 'bg-brand-secondary';
+  const buttonHoverClass = type === 'error' ? 'hover:bg-red-700' : 'hover:bg-brand-primary';
+
   return (
-    <div className="fixed bottom-5 right-5 w-full max-w-sm p-4 text-white bg-red-600 rounded-lg shadow-lg flex items-start justify-between animate-fade-in-up">
+    <div className={`${baseClasses} ${typeClasses}`}>
       <p className="flex-grow pr-4">{message}</p>
-      <button onClick={onClose} className="p-1 -m-1 rounded-full hover:bg-red-700">
+      <button onClick={onClose} className={`p-1 -m-1 rounded-full ${buttonHoverClass}`}>
         <CloseIcon className="w-5 h-5" />
       </button>
       <style>{`

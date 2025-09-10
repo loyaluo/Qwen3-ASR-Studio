@@ -1,0 +1,179 @@
+import React from 'react';
+import { CloseIcon } from './icons/CloseIcon';
+import { Language } from '../types';
+
+interface SettingsPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+  theme: 'light' | 'dark';
+  setTheme: (theme: 'light' | 'dark') => void;
+  autoCopy: boolean;
+  setAutoCopy: (autoCopy: boolean) => void;
+  context: string;
+  setContext: (context: string) => void;
+  language: Language;
+  setLanguage: (language: Language) => void;
+  enableItn: boolean;
+  setEnableItn: (enable: boolean) => void;
+  disabled?: boolean;
+}
+
+const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; disabled?: boolean; id: string; }> = ({ enabled, onChange, disabled, id }) => {
+  return (
+    <button
+      type="button"
+      id={id}
+      onClick={() => onChange(!enabled)}
+      disabled={disabled}
+      className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-200 focus:ring-brand-primary ${
+        enabled ? 'bg-brand-primary' : 'bg-base-300'
+      } disabled:opacity-60`}
+    >
+      <span
+        className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-200 ease-in-out ${
+          enabled ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  )
+}
+
+const languageDisplayNames: Record<Language, string> = {
+  [Language.AUTO]: "自动检测",
+  [Language.ENGLISH]: "英语 (en)",
+  [Language.CHINESE]: "中文 (zh)",
+  [Language.JAPANESE]: "日语 (ja)",
+  [Language.KOREAN]: "韩语 (ko)",
+  [Language.FRENCH]: "法语 (fr)",
+  [Language.GERMAN]: "德语 (de)",
+  [Language.SPANISH]: "西班牙语 (es)",
+};
+
+export const SettingsPanel: React.FC<SettingsPanelProps> = ({
+  isOpen,
+  onClose,
+  theme,
+  setTheme,
+  autoCopy,
+  setAutoCopy,
+  context,
+  setContext,
+  language,
+  setLanguage,
+  enableItn,
+  setEnableItn,
+  disabled,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" aria-labelledby="settings-title" role="dialog" aria-modal="true">
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black bg-opacity-60 transition-opacity" aria-hidden="true" onClick={onClose}></div>
+
+      {/* Modal panel */}
+      <div className="relative w-full max-w-md p-6 m-4 bg-base-200 text-content-100 rounded-lg shadow-xl border border-base-300 transform transition-all">
+        <div className="flex items-center justify-between pb-3 border-b border-base-300">
+          <h2 id="settings-title" className="text-xl font-bold">设置</h2>
+          <button
+            onClick={onClose}
+            aria-label="关闭设置"
+            className="p-1 rounded-full text-content-200 hover:bg-base-300 hover:text-content-100 transition-colors"
+          >
+            <CloseIcon className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-6">
+          {/* Theme setting */}
+          <div className="flex items-center justify-between">
+            <label className="text-base font-medium">
+              主题
+            </label>
+            <div className="flex items-center gap-2 p-1 rounded-lg bg-base-100 border border-base-300">
+              <button
+                onClick={() => setTheme('light')}
+                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${theme === 'light' ? 'bg-brand-primary text-white' : 'hover:bg-base-300'}`}
+              >
+                浅色
+              </button>
+              <button
+                onClick={() => setTheme('dark')}
+                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${theme === 'dark' ? 'bg-brand-primary text-white' : 'hover:bg-base-300'}`}
+              >
+                深色
+              </button>
+            </div>
+          </div>
+          
+          {/* Auto-copy setting */}
+          <div className="flex items-center justify-between">
+            <label htmlFor="auto-copy" className="text-base font-medium">
+              自动复制结果
+              <p className="text-sm text-content-200 font-normal">识别完成后自动将结果复制到剪贴板。</p>
+            </label>
+            <ToggleSwitch
+              id="auto-copy"
+              enabled={autoCopy}
+              onChange={setAutoCopy}
+            />
+          </div>
+
+          <div className="border-t border-base-300"></div>
+          
+          <div>
+            <h3 className="text-lg font-semibold text-content-100 mb-4">转录选项</h3>
+            <div className="space-y-6">
+              <div>
+                <label htmlFor="context-setting" className="text-base font-medium">
+                  上下文 (可选)
+                  <p className="text-sm text-content-200 font-normal">提供上下文以提高准确性，例如：人名、术语。</p>
+                </label>
+                <textarea
+                  id="context-setting"
+                  rows={3}
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  disabled={disabled}
+                  placeholder="人名、术语等..."
+                  className="mt-2 w-full px-3 py-2 text-sm rounded-md shadow-sm bg-base-100 border border-base-300 text-content-100 placeholder-content-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary disabled:opacity-60"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label htmlFor="language-setting" className="text-base font-medium">
+                  语言
+                </label>
+                <select
+                  id="language-setting"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as Language)}
+                  disabled={disabled}
+                  className="w-48 px-3 py-2 text-sm rounded-md shadow-sm bg-base-100 border border-base-300 text-content-100 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary disabled:opacity-60"
+                >
+                  {Object.values(Language).map((langValue) => (
+                    <option key={langValue} value={langValue}>
+                      {languageDisplayNames[langValue]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label htmlFor="itn-setting" className="text-base font-medium">
+                  启用反向文本标准化 (ITN)
+                </label>
+                <ToggleSwitch
+                  id="itn-setting"
+                  enabled={enableItn}
+                  onChange={setEnableItn}
+                  disabled={disabled}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

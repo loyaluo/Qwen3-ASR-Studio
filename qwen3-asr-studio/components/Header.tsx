@@ -1,8 +1,8 @@
 import React from 'react';
-import { LogoIcon } from './icons/LogoIcon';
 import { PipIcon } from './icons/PipIcon';
+import { SettingsIcon } from './icons/SettingsIcon';
 
-export const Header: React.FC = () => {
+export const Header: React.FC<{ onSettingsClick: () => void }> = ({ onSettingsClick }) => {
   const handlePipClick = () => {
     window.open(
         '/pip.html', 
@@ -13,14 +13,23 @@ export const Header: React.FC = () => {
 
   return (
     <header className="flex items-center justify-between">
-      <div className="w-16"></div>
-      <div className="flex items-center justify-center gap-4">
-        <LogoIcon className="w-12 h-12 text-brand-primary" />
-        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-content-100">
-          Qwen3-ASR-Studio
-        </h1>
+      <div className="flex-1"></div>
+      <div className="flex items-center justify-center flex-shrink-0 mx-4">
+        <img
+          src="https://modelscope.oss-cn-beijing.aliyuncs.com/resource/00EE8C99-9C05-4236-A6D0-B58FF172D31B.png"
+          alt="Qwen3 ASR Studio"
+          className="h-14 sm:h-16 w-auto"
+        />
       </div>
-      <div className="w-16 flex justify-end">
+      <div className="flex-1 flex justify-end gap-2">
+        <button
+          onClick={onSettingsClick}
+          title="设置"
+          aria-label="打开设置"
+          className="p-2 rounded-full text-content-200 hover:bg-base-200 hover:text-content-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"
+        >
+          <SettingsIcon className="w-6 h-6" />
+        </button>
         <button
           onClick={handlePipClick}
           title="输入法模式 (画中画)"

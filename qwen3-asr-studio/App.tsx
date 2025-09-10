@@ -1,5 +1,6 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Header } from './components/Header';
 import { AudioUploader, type AudioUploaderHandle } from './components/AudioUploader';
 import { ResultDisplay } from './components/ResultDisplay';
@@ -14,10 +15,20 @@ import { getFileHash, getCachedTranscription, setCachedTranscription, getCachedR
 import { AudioPreview } from './components/AudioPreview';
 import { HistoryPanel } from './components/HistoryPanel';
 import { RetryIcon } from './components/icons/RetryIcon';
+import { PipView } from './components/PipView';
 
 type Notification = {
   message: string;
   type: 'error' | 'success';
+}
+
+declare global {
+    interface Window {
+        documentPictureInPicture?: {
+            requestWindow(options?: { width: number, height: number }): Promise<Window>;
+            readonly window?: Window;
+        };
+    }
 }
 
 export default function App() {
@@ -55,6 +66,11 @@ export default function App() {
       ? savedLevel
       : CompressionLevel.ORIGINAL; // Default to original
   });
+
+  // PiP State
+  const [pipWindow, setPipWindow] = useState<Window | null>(null);
+  const [pipContainer, setPipContainer] = useState<HTMLElement | null>(null);
+  const isPipActive = !!pipWindow;
 
   const handleError = useCallback((message: string) => {
       setNotification({ message, type: 'error' });
@@ -145,12 +161,9 @@ export default function App() {
     localStorage.setItem('enableItn', String(enableItn));
   }, [enableItn]);
 
-  useEffect(() => {
-    const channel = new BroadcastChannel('qwen3-asr-pip');
-
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'copy' && typeof event.data.text === 'string') {
-        navigator.clipboard.writeText(event.data.text)
+  const handleTranscriptionCompleteFromPip = useCallback((text: string) => {
+    if (text) {
+        navigator.clipboard.writeText(text)
           .then(() => {
             setNotification({ message: '输入法模式识别结果已复制', type: 'success' });
           })
@@ -158,17 +171,73 @@ export default function App() {
             console.error('Failed to copy text from PiP:', err);
             setNotification({ message: '从输入法模式复制失败', type: 'error' });
           });
-      }
-    };
-
-    channel.addEventListener('message', handleMessage);
-
-    return () => {
-      channel.removeEventListener('message', handleMessage);
-      channel.close();
-    };
+    }
   }, []);
 
+  const closePip = useCallback(() => {
+    if (pipWindow) {
+      pipWindow.close();
+      // The 'pagehide' listener will handle state cleanup
+    }
+  }, [pipWindow]);
+
+  const openPip = useCallback(async () => {
+    if (!('documentPictureInPicture' in window)) {
+      handleError('您的浏览器不支持此功能。请使用最新版本的 Chrome 或 Edge 浏览器。');
+      return;
+    }
+    if (isPipActive) return;
+
+    try {
+      const pipWin = await window.documentPictureInPicture!.requestWindow({
+        width: 380,
+        height: 520,
+      });
+
+      // Copy all styles from the main document to the PiP window.
+      Array.from(document.querySelectorAll('style, link[rel="stylesheet"]')).forEach(node => {
+        pipWin.document.head.appendChild(node.cloneNode(true));
+      });
+       // Also copy inline tailwind config
+      document.querySelectorAll('script').forEach(script => {
+          if (script.textContent?.includes('tailwind.config')) {
+              const newScript = pipWin.document.createElement('script');
+              newScript.textContent = script.textContent;
+              pipWin.document.head.appendChild(newScript);
+          }
+      });
+
+      pipWin.document.title = "输入法模式 - Qwen3-ASR";
+      pipWin.document.body.className = document.body.className; // Copy body classes
+      pipWin.document.body.style.margin = '0';
+      pipWin.document.body.style.overflow = 'hidden';
+
+      const container = pipWin.document.createElement('div');
+      container.id = 'pip-root';
+      container.style.height = '100vh';
+      pipWin.document.body.appendChild(container);
+
+      pipWin.addEventListener('pagehide', () => {
+        setPipWindow(null);
+        setPipContainer(null);
+      }, { once: true });
+
+      setPipWindow(pipWin);
+      setPipContainer(container);
+
+    } catch (error) {
+      console.error('Failed to open document PiP window:', error);
+      handleError('打开画中画窗口失败。用户可能已拒绝请求。');
+    }
+  }, [isPipActive, handleError]);
+
+  const togglePip = useCallback(() => {
+    if (isPipActive) {
+      closePip();
+    } else {
+      openPip();
+    }
+  }, [isPipActive, closePip, openPip]);
 
   const handleFileChange = (file: File | null) => {
     setAudioFile(file);
@@ -360,7 +429,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-base-100 text-content-100 font-sans p-4 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
-        <Header onSettingsClick={() => setIsSettingsOpen(true)} onPipError={handleError} />
+        <Header onSettingsClick={() => setIsSettingsOpen(true)} onPipClick={togglePip} />
         <main className="mt-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-6">
@@ -448,6 +517,14 @@ export default function App() {
         onClearHistory={handleClearHistory}
         disabled={isLoading}
       />
+       {isPipActive && pipContainer && createPortal(
+        <PipView
+          transcribeAudio={transcribeAudio}
+          onTranscriptionComplete={handleTranscriptionCompleteFromPip}
+          theme={theme}
+        />,
+        pipContainer
+      )}
     </div>
   );
 }

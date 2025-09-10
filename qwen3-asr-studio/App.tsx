@@ -185,8 +185,8 @@ export default function App() {
 
     try {
       const pipWin = await window.documentPictureInPicture!.requestWindow({
-        width: 420,
-        height: 80,
+        width: 480,
+        height: 70,
       });
 
       // Copy all styles from the main document to the PiP window.

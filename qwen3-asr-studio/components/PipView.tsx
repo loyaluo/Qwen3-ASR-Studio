@@ -7,7 +7,6 @@ import { CheckIcon } from './icons/CheckIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { LoaderIcon } from './icons/LoaderIcon';
 import { StopIcon } from './icons/StopIcon';
-import { CopyIcon } from './icons/CopyIcon';
 
 interface PipViewProps {
   onTranscriptionResult: (result: {
@@ -25,7 +24,6 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
     type Status = 'idle' | 'recording' | 'processing' | 'success' | 'error';
     const [status, setStatus] = useState<Status>('idle');
     const [message, setMessage] = useState<string>('');
-    const [copied, setCopied] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -34,30 +32,8 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
     useEffect(() => {
         if (status === 'success' && inputRef.current) {
             inputRef.current.select();
-        } else {
-            setCopied(false);
         }
     }, [status]);
-
-    useEffect(() => {
-        if (copied) {
-            const timer = setTimeout(() => setCopied(false), 2000);
-            return () => clearTimeout(timer);
-        }
-    }, [copied]);
-
-    const handleCopy = useCallback(async () => {
-        if (status === 'success' && message) {
-            try {
-                await navigator.clipboard.writeText(message);
-                setCopied(true);
-            } catch (err) {
-                console.error('Failed to copy text from PiP:', err);
-                setMessage('复制失败');
-                setStatus('error');
-            }
-        }
-    }, [status, message]);
 
     const handleTranscription = useCallback(async (audioFile: File) => {
         setStatus('processing');
@@ -215,16 +191,6 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
             >
                 {getIcon()}
             </button>
-            {status === 'success' && (
-                <button
-                    onClick={handleCopy}
-                    title={copied ? "已复制!" : "复制"}
-                    aria-label="复制识别结果"
-                    className="flex-shrink-0 p-2 ml-2 text-content-100 transition-colors duration-300 rounded-md bg-base-200 hover:bg-base-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-100 focus:ring-brand-primary"
-                >
-                    {copied ? <CheckIcon className="w-6 h-6 text-brand-primary" /> : <CopyIcon className="w-6 h-6" />}
-                </button>
-            )}
             <input
                 ref={inputRef}
                 type="text"

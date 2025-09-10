@@ -156,14 +156,6 @@ export default function App() {
     localStorage.setItem('enableItn', String(enableItn));
   }, [enableItn]);
 
-  const handleTranscriptionResultFromPip = useCallback((result: { text: string; copied: boolean; error?: string }) => {
-    if (result.copied) {
-        setNotification({ message: '输入法模式识别结果已复制', type: 'success' });
-    } else if (result.text) {
-        setNotification({ message: `识别成功，但复制失败${result.error ? `: ${result.error}` : ''}`, type: 'error' });
-    }
-  }, []);
-
   const closePip = useCallback(() => {
     if (pipWindow) {
       pipWindow.close();
@@ -440,6 +432,74 @@ export default function App() {
     }
   };
 
+  // --- PiP Communication Logic ---
+
+  // This effect syncs state changes TO the PiP window
+  useEffect(() => {
+    if (!pipWindow || pipWindow.closed) return;
+    
+    type PipStatus = 'idle' | 'recording' | 'processing' | 'success' | 'error';
+    let status: PipStatus = 'idle';
+    let message = '点击开始录音';
+
+    if (isLoading) {
+        status = 'processing';
+        message = loadingMessage || '正在识别...';
+    } else if (isRecording) {
+        status = 'recording';
+        message = '正在聆听...';
+    } else if (transcription) {
+        status = 'success';
+        message = transcription;
+    } else {
+        if (notification?.type === 'error') {
+            status = 'error';
+            message = notification.message;
+        }
+    }
+    
+    pipWindow.postMessage({
+        type: 'APP_STATE_UPDATE',
+        payload: { status, message }
+    }, '*');
+
+  }, [pipWindow, isLoading, isRecording, loadingMessage, transcription, notification]);
+
+  // This effect handles messages FROM the PiP window
+  useEffect(() => {
+    const handlePipMessage = (event: MessageEvent) => {
+        if (event.source !== pipWindow) return;
+
+        const data = event.data;
+        if (!data) return;
+
+        if (data.type === 'PIP_ACTION' && data.payload === 'toggle_recording') {
+            // "Remote control" action from PiP
+            if (isRecording) {
+                // Stop recording and queue for transcription
+                setTranscribeAfterRecording(true);
+                audioUploaderRef.current?.stopRecording();
+            } else if (!isLoading) {
+                // Start a new recording
+                // Clear any existing file to avoid confusion, making PiP a dedicated recorder
+                if (audioFile) {
+                    handleFileChange(null);
+                }
+                audioUploaderRef.current?.startRecording();
+            }
+        } else if (data.type === 'PIP_READY') {
+             // The other effect already sends state whenever dependencies change,
+             // so when pipWindow is set, the initial state will be sent automatically.
+             // This event can be used to explicitly send an initial state if needed.
+        }
+    };
+    
+    window.addEventListener('message', handlePipMessage);
+    return () => {
+        window.removeEventListener('message', handlePipMessage);
+    };
+  }, [pipWindow, isRecording, isLoading, audioFile, handleFileChange]);
+
 
   return (
     <div className="min-h-screen bg-base-100 text-content-100 font-sans p-4 sm:p-6 lg:p-8">
@@ -546,13 +606,7 @@ export default function App() {
         disabled={isLoading}
       />
        {isPipActive && pipContainer && createPortal(
-        <PipView
-          onTranscriptionResult={handleTranscriptionResultFromPip}
-          theme={theme}
-          context={context}
-          language={language}
-          enableItn={enableItn}
-        />,
+        <PipView />,
         pipContainer
       )}
     </div>

@@ -252,6 +252,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               >
                 https://github.com/yeahhe365/Qwen3-ASR-Studio
               </a>
+              <p className="text-sm text-content-200 mt-4">
+                您可以在此处找到该项目的 API 文档。
+              </p>
+              <a
+                href="https://c0rpr74ughd0-deploy.space.z.ai/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 text-sm text-brand-primary hover:underline block truncate"
+              >
+                https://c0rpr74ughd0-deploy.space.z.ai/
+              </a>
             </div>
 
           </div>

@@ -135,7 +135,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
     };
 
     const getIconContainerClass = () => {
-        const base = "p-2 rounded-md transition-colors duration-300 flex-shrink-0";
+        const base = "p-2 rounded-md transition-colors duration-300 flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary focus:ring-offset-base-100 disabled:opacity-50 disabled:cursor-not-allowed";
         switch (status) {
             case 'recording': return `${base} bg-red-600 animate-pulse-custom`;
             case 'error': return `${base} bg-red-600`;
@@ -146,19 +146,23 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
 
     return (
         <div 
-            className="flex items-center h-screen w-full bg-base-100 font-sans text-content-100 select-none cursor-pointer p-4"
-            onClick={handleClick}
-            role="button"
-            tabIndex={0}
-            aria-label={message}
+            className="flex items-center h-screen w-full bg-base-100 font-sans text-content-100 select-none p-4"
         >
             <style>{`
                 @keyframes pulse-custom { 50% { opacity: .6; } }
                 .animate-pulse-custom { animation: pulse-custom 2s cubic-bezier(0.4, 0.6, 1) infinite; }
             `}</style>
-            <div className={getIconContainerClass()}>
+            <button
+                onClick={handleClick}
+                disabled={status === 'processing'}
+                className={getIconContainerClass()}
+                aria-label={
+                    status === 'recording' ? '停止录音' :
+                    status === 'processing' ? '正在识别' : '开始录音'
+                }
+            >
                 {getIcon()}
-            </div>
+            </button>
             <p className={`ml-4 text-2xl font-semibold break-all truncate ${status === 'success' || status === 'error' ? 'text-content-100' : 'text-content-200'}`}>
                 {message}
             </p>

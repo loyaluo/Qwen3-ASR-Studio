@@ -16,6 +16,7 @@ import { AudioPreview } from './components/AudioPreview';
 import { HistoryPanel } from './components/HistoryPanel';
 import { RetryIcon } from './components/icons/RetryIcon';
 import { PipView } from './components/PipView';
+import { StopIcon } from './components/icons/StopIcon';
 
 type Notification = {
   message: string;
@@ -44,6 +45,7 @@ export default function App() {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [transcribeAfterRecording, setTranscribeAfterRecording] = useState<boolean>(false);
   const audioUploaderRef = useRef<AudioUploaderHandle>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const isSpaceDown = useRef(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
@@ -88,9 +90,8 @@ export default function App() {
     };
 
     try {
-      const { file, context: exampleContext } = await loadExample(exampleId, onProgress);
+      const { file } = await loadExample(exampleId, onProgress);
       setAudioFile(file);
-      setContext(exampleContext);
     } catch (err) {
       console.error('Example loading error:', err);
       const errorMessage = err instanceof Error ? err.message : '加载示例音频失败。';
@@ -104,12 +105,10 @@ export default function App() {
   // Load cached recording and history on mount
   useEffect(() => {
     const loadInitialData = async () => {
-      let audioLoaded = false;
       try {
         const cachedRecording = await getCachedRecording();
         if (cachedRecording) {
           setAudioFile(cachedRecording);
-          audioLoaded = true;
         }
       } catch (error) {
         console.error("Failed to load cached recording:", error);
@@ -121,13 +120,9 @@ export default function App() {
       } catch (error) {
         console.error("Failed to load history:", error);
       }
-      
-      if (!audioLoaded) {
-        handleLoadExample(0);
-      }
     };
     loadInitialData();
-  }, [handleLoadExample]);
+  }, []);
 
   // Effect to manage theme
   useEffect(() => {
@@ -255,6 +250,11 @@ export default function App() {
       handleError('没有提供音频文件。');
       return;
     }
+    
+    abortControllerRef.current?.abort(); // Abort previous request if any
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    
     setIsLoading(true);
     setNotification(null);
     setTranscription('');
@@ -286,7 +286,7 @@ export default function App() {
       } else {
           onProgress('正在压缩音频（如果需要）...');
           const fileToTranscribe = await compressAudio(file, compressionLevel);
-          const result = await transcribeAudio(fileToTranscribe, context, language, enableItn, onProgress);
+          const result = await transcribeAudio(fileToTranscribe, context, language, enableItn, onProgress, controller.signal);
           setTranscription(result.transcription);
           setDetectedLanguage(result.detectedLanguage);
           finalTranscription = result.transcription;
@@ -324,9 +324,13 @@ export default function App() {
       }
 
     } catch (err) {
-      console.error('Transcription error:', err);
-      const errorMessage = err instanceof Error ? err.message : '转录过程中发生未知错误。';
-      handleError(errorMessage);
+      if (err instanceof Error && err.name === 'AbortError') {
+        setNotification({ message: '识别已取消', type: 'success' });
+      } else {
+        console.error('Transcription error:', err);
+        const errorMessage = err instanceof Error ? err.message : '转录过程中发生未知错误。';
+        handleError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
       setLoadingMessage('');
@@ -348,6 +352,10 @@ export default function App() {
     transcribeNow(audioFile, false);
 
   }, [audioFile, isRecording, transcribeNow, handleError]);
+  
+  const handleCancel = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
 
   const handleRetry = useCallback(() => {
     if (audioFile) {
@@ -474,15 +482,26 @@ export default function App() {
                       '开始识别'
                     )}
                   </button>
-                  {transcription && audioFile && !isLoading && (
+                  {isLoading ? (
                     <button
-                      onClick={handleRetry}
-                      title="重试"
-                      aria-label="重试识别"
-                      className="flex-shrink-0 p-3 text-content-100 transition-colors duration-300 rounded-lg shadow-lg bg-base-200 border border-base-300 hover:bg-base-300 focus:outline-none focus:ring-4 focus:ring-brand-primary focus:ring-opacity-50"
+                      onClick={handleCancel}
+                      title="取消"
+                      aria-label="取消识别"
+                      className="flex-shrink-0 p-3 text-white transition-colors duration-300 bg-red-600 rounded-lg shadow-lg hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-500 focus:ring-opacity-50"
                     >
-                      <RetryIcon className="w-6 h-6" />
+                      <StopIcon className="w-6 h-6" />
                     </button>
+                  ) : (
+                    transcription && audioFile && (
+                      <button
+                        onClick={handleRetry}
+                        title="重试"
+                        aria-label="重试识别"
+                        className="flex-shrink-0 p-3 text-content-100 transition-colors duration-300 rounded-lg shadow-lg bg-base-200 border border-base-300 hover:bg-base-300 focus:outline-none focus:ring-4 focus:ring-brand-primary focus:ring-opacity-50"
+                      >
+                        <RetryIcon className="w-6 h-6" />
+                      </button>
+                    )
                   )}
                  </div>
               </div>

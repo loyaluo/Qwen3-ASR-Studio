@@ -36,7 +36,8 @@ export const transcribeAudio = async (
   context: string,
   language: Language,
   enableItn: boolean,
-  onProgress: (message: string) => void
+  onProgress: (message: string) => void,
+  signal: AbortSignal
 ): Promise<{ transcription: string; detectedLanguage: string }> => {
   
   for (let i = 0; i < MAX_RETRIES; i++) {
@@ -64,6 +65,7 @@ export const transcribeAudio = async (
           language: language,
           enable_itn: enableItn,
         }),
+        signal,
       });
 
       if (!response.ok) {
@@ -87,6 +89,10 @@ export const transcribeAudio = async (
         throw new Error('来自 API 的响应格式无效');
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        onProgress('识别已取消。');
+        throw error; // Re-throw to be caught by the caller and stop retries
+      }
       if (i === MAX_RETRIES - 1) {
         console.error(`Transcription failed after ${MAX_RETRIES} attempts.`, error);
         onProgress('识别失败。');

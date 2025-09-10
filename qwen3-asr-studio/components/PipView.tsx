@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { transcribeAudio } from '../services/gradioService';
 import { Language } from '../types';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
@@ -20,7 +20,7 @@ interface PipViewProps {
 export const PipView: React.FC<PipViewProps> = ({ transcribeAudio, onTranscriptionComplete }) => {
     type Status = 'idle' | 'recording' | 'processing' | 'success' | 'error';
     const [status, setStatus] = useState<Status>('idle');
-    const [message, setMessage] = useState<string>('点击按钮录音');
+    const [message, setMessage] = useState<string>('点击开始录音');
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -68,8 +68,7 @@ export const PipView: React.FC<PipViewProps> = ({ transcribeAudio, onTranscripti
             recorder.onstop = () => {
                 const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
                 const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-                const extension = mimeType.split('/')[1]?.split(';')[0] || 'webm';
-                const audioFile = new File([audioBlob], `recording.${extension}`, { type: mimeType });
+                const audioFile = new File([audioBlob], `recording.${mimeType.split('/')[1]}`, { type: mimeType });
                 audioChunksRef.current = [];
                 stream.getTracks().forEach(track => track.stop());
                 handleTranscription(audioFile);
@@ -116,44 +115,33 @@ export const PipView: React.FC<PipViewProps> = ({ transcribeAudio, onTranscripti
         }
     };
 
-    const getButtonClass = () => {
-        const base = "flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-opacity-50";
+    const getIconContainerClass = () => {
+        const base = "p-2 rounded-md transition-colors duration-300 flex-shrink-0";
         switch (status) {
-            case 'recording': return `${base} bg-blue-600 focus:ring-blue-400 animate-pulse-custom`;
-            case 'processing': return `${base} bg-gray-500 cursor-not-allowed`;
-            case 'error': return `${base} bg-red-600 focus:ring-red-400`;
-            case 'success': return `${base} bg-green-600 focus:ring-green-400`;
-            default: return `${base} bg-blue-600 hover:bg-blue-700 focus:ring-blue-400`;
-        }
-    };
-    
-    const getMessageClass = () => {
-        const base = "text-xl font-medium break-all truncate";
-        switch (status) {
-            case 'error': return `${base} text-red-400`;
-            case 'success': return `${base} text-white`;
-            default: return `${base} text-gray-300`;
+            case 'recording': return `${base} bg-blue-600 animate-pulse-custom`;
+            case 'error': return `${base} bg-red-600`;
+            case 'success': return `${base} bg-green-600`;
+            default: return `${base} bg-blue-600`;
         }
     };
 
     return (
         <div 
-            className="flex items-center h-screen w-full bg-[#1e1e1e] font-sans select-none p-2 gap-3"
+            className="flex items-center h-screen w-full bg-[#1e1e1e] font-sans text-content-100 select-none cursor-pointer p-4"
+            onClick={handleClick}
+            role="button"
+            tabIndex={0}
+            aria-label={message}
         >
             <style>{`
                 body { margin: 0; overflow: hidden; }
                 @keyframes pulse-custom { 50% { opacity: .6; } }
                 .animate-pulse-custom { animation: pulse-custom 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
             `}</style>
-            <button
-              onClick={handleClick}
-              disabled={status === 'processing'}
-              aria-label="录音按钮"
-              className={getButtonClass()}
-            >
+            <div className={getIconContainerClass()}>
                 {getIcon()}
-            </button>
-            <p className={getMessageClass()}>
+            </div>
+            <p className={`ml-4 text-2xl font-semibold break-all truncate ${status === 'success' || status === 'error' ? 'text-white' : 'text-gray-300'}`}>
                 {message}
             </p>
         </div>

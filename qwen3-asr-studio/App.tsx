@@ -1,168 +1,156 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Header } from './components/Header';
-import { AudioRecorder } from './components/AudioRecorder';
-import { FileUpload } from './components/FileUpload';
+import { AudioUploader, type AudioUploaderHandle } from './components/AudioUploader';
+import { OptionsPanel } from './components/OptionsPanel';
 import { ResultDisplay } from './components/ResultDisplay';
-import { Loader } from './components/Loader';
-import { transcribeAudio } from './services/gradioService';
-import { Language, AppState, InputMode } from './types';
-import { LANGUAGES } from './constants';
-import { MicrophoneIcon } from './components/icons/MicrophoneIcon';
-import { UploadIcon } from './components/icons/UploadIcon';
+import { ExampleButtons } from './components/ExampleButtons';
+import { transcribeAudio, loadExample } from './services/gradioService';
+import { Language } from './types';
+import { Toast } from './components/Toast';
+import { LoaderIcon } from './components/icons/LoaderIcon';
 
-const App: React.FC = () => {
-  const [appState, setAppState] = useState<AppState>({
-    inputMode: InputMode.UPLOAD,
-    audioFile: null,
-    context: '',
-    language: Language.AUTO,
-    enableITN: true,
-    isLoading: false,
-    statusMessage: '',
-    transcription: null,
-    detectedLanguage: null,
-    error: null,
-  });
+export default function App() {
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [context, setContext] = useState<string>('');
+  const [language, setLanguage] = useState<Language>(Language.AUTO);
+  const [enableItn, setEnableItn] = useState<boolean>(true);
+  const [transcription, setTranscription] = useState<string>('');
+  const [detectedLanguage, setDetectedLanguage] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [transcribeAfterRecording, setTranscribeAfterRecording] = useState<boolean>(false);
+  const audioUploaderRef = useRef<AudioUploaderHandle>(null);
+
+  const handleFileChange = (file: File | null) => {
+    setAudioFile(file);
+    setTranscription('');
+    setDetectedLanguage('');
+    setError(null);
+  };
+
+  const transcribeNow = useCallback(async (file: File) => {
+    if (!file) {
+      setError('没有提供音频文件。');
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    setTranscription('');
+    setDetectedLanguage('');
+
+    try {
+      const result = await transcribeAudio(file, context, language, enableItn);
+      setTranscription(result.transcription);
+      setDetectedLanguage(result.detectedLanguage);
+    } catch (err) {
+      console.error('Transcription error:', err);
+      setError(err instanceof Error ? err.message : '转录过程中发生未知错误。');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [context, language, enableItn]);
 
   const handleTranscribe = useCallback(async () => {
-    if (!appState.audioFile) {
-      setAppState(prev => ({ ...prev, error: '请提供一个音频文件。' }));
+    if (isRecording && audioUploaderRef.current) {
+      setTranscribeAfterRecording(true);
+      audioUploaderRef.current.stopRecording();
       return;
     }
 
-    setAppState(prev => ({
-      ...prev,
-      isLoading: true,
-      statusMessage: '准备音频中...',
-      error: null,
-      transcription: null,
-      detectedLanguage: null,
-    }));
+    if (!audioFile) {
+      setError('请先上传或录制一段音频。');
+      return;
+    }
+    
+    transcribeNow(audioFile);
+
+  }, [audioFile, isRecording, transcribeNow]);
+  
+  useEffect(() => {
+    if (transcribeAfterRecording && audioFile && !isRecording) {
+      setTranscribeAfterRecording(false);
+      transcribeNow(audioFile);
+    }
+  }, [transcribeAfterRecording, audioFile, isRecording, transcribeNow]);
+
+
+  const handleLoadExample = useCallback(async (exampleId: number) => {
+    setIsLoading(true);
+    setError(null);
+    setAudioFile(null);
+    setTranscription('');
+    setDetectedLanguage('');
 
     try {
-      const result = await transcribeAudio(
-        appState.audioFile,
-        appState.context,
-        appState.language,
-        appState.enableITN,
-        (status) => setAppState(prev => ({ ...prev, statusMessage: status }))
-      );
-      setAppState(prev => ({
-        ...prev,
-        isLoading: false,
-        transcription: result.transcription,
-        detectedLanguage: result.detectedLanguage,
-      }));
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : '发生未知错误。';
-      setAppState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
+      const { file, context: exampleContext } = await loadExample(exampleId);
+      setAudioFile(file);
+      setContext(exampleContext);
+    } catch (err) {
+      console.error('Example loading error:', err);
+      setError(err instanceof Error ? err.message : '加载示例音频失败。');
+    } finally {
+      setIsLoading(false);
     }
-  }, [appState.audioFile, appState.context, appState.language, appState.enableITN]);
+  }, []);
 
-  const setAudioFile = (file: File | null) => {
-    setAppState(prev => ({ ...prev, audioFile: file, error: null }));
-  };
-
-  const renderInputPanel = () => {
-    switch (appState.inputMode) {
-      case InputMode.RECORD:
-        return <AudioRecorder setAudioFile={setAudioFile} />;
-      case InputMode.UPLOAD:
-      default:
-        return <FileUpload audioFile={appState.audioFile} setAudioFile={setAudioFile} />;
-    }
-  };
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-800 font-sans">
-      <Header />
-      <main className="container mx-auto p-4 md:p-8">
-        <div className="bg-white rounded-2xl shadow-2xl shadow-gray-200/50 p-6 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Input Section */}
-          <div className="flex flex-col space-y-6">
-            <div className="flex bg-gray-200 rounded-lg p-1">
-              <button
-                onClick={() => setAppState(prev => ({ ...prev, inputMode: InputMode.UPLOAD, audioFile: null }))}
-                className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-colors ${appState.inputMode === InputMode.UPLOAD ? 'bg-sky-500 text-white' : 'hover:bg-gray-300 text-gray-600'}`}
-              >
-                <UploadIcon className="w-5 h-5" />
-                上传音频
-              </button>
-              <button
-                onClick={() => setAppState(prev => ({ ...prev, inputMode: InputMode.RECORD, audioFile: null }))}
-                className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-colors ${appState.inputMode === InputMode.RECORD ? 'bg-sky-500 text-white' : 'hover:bg-gray-300 text-gray-600'}`}
-              >
-                <MicrophoneIcon className="w-5 h-5" />
-                录制音频
-              </button>
-            </div>
-
-            {renderInputPanel()}
-
-            <div>
-              <label htmlFor="context" className="block text-sm font-medium text-gray-600 mb-2">上下文（可选）</label>
-              <textarea
-                id="context"
-                rows={3}
-                value={appState.context}
-                onChange={(e) => setAppState(prev => ({ ...prev, context: e.target.value }))}
-                placeholder="提供上下文以提高转录准确性，例如：人名、特定术语。"
-                className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
+    <div className="min-h-screen bg-base-100 text-content-100 font-sans p-4 sm:p-6 lg:p-8">
+      <div className="max-w-4xl mx-auto">
+        <Header />
+        <main className="mt-8 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              <AudioUploader 
+                ref={audioUploaderRef}
+                file={audioFile} 
+                onFileChange={handleFileChange}
+                onRecordingChange={setIsRecording}
+                disabled={isLoading}
+                onRecordingError={setError}
+              />
+              <ExampleButtons onLoadExample={handleLoadExample} disabled={isLoading} />
+              <OptionsPanel
+                context={context}
+                setContext={setContext}
+                language={language}
+                setLanguage={setLanguage}
+                enableItn={enableItn}
+                setEnableItn={setEnableItn}
+                disabled={isLoading}
               />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="language" className="block text-sm font-medium text-gray-600 mb-2">语言</label>
-                <select
-                  id="language"
-                  value={appState.language}
-                  onChange={(e) => setAppState(prev => ({ ...prev, language: e.target.value as Language }))}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
-                >
-                  {LANGUAGES.map(lang => <option key={lang.value} value={lang.value}>{lang.label}</option>)}
-                </select>
-              </div>
-              <div className="flex items-end pb-1">
-                 <div className="flex items-center space-x-3">
-                  <input
-                    id="itn"
-                    type="checkbox"
-                    checked={appState.enableITN}
-                    onChange={(e) => setAppState(prev => ({ ...prev, enableITN: e.target.checked }))}
-                    className="h-5 w-5 rounded bg-gray-200 border-gray-300 text-sky-500 focus:ring-sky-500"
-                  />
-                  <label htmlFor="itn" className="font-medium text-gray-700">启用逆文本标准化 (ITN)</label>
-                </div>
-              </div>
+            <div className="flex flex-col">
+               <ResultDisplay
+                transcription={transcription}
+                detectedLanguage={detectedLanguage}
+                isLoading={isLoading}
+              />
             </div>
-
+          </div>
+          
+          <div className="flex justify-center pt-4">
             <button
               onClick={handleTranscribe}
-              disabled={!appState.audioFile || appState.isLoading}
-              className="w-full bg-sky-600 hover:bg-sky-500 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 disabled:scale-100"
+              disabled={(!audioFile && !isRecording) || isLoading}
+              className="flex items-center justify-center w-full max-w-xs px-6 py-3 text-lg font-semibold text-white transition-all duration-300 rounded-lg shadow-lg bg-brand-primary hover:bg-brand-secondary disabled:bg-base-300 disabled:cursor-not-allowed disabled:text-content-200 focus:outline-none focus:ring-4 focus:ring-brand-primary focus:ring-opacity-50"
             >
-              {appState.isLoading ? '处理中...' : '开始转录'}
+              {isLoading ? (
+                <>
+                  <LoaderIcon className="w-6 h-6 mr-3" />
+                  正在识别...
+                </>
+              ) : isRecording ? (
+                  '停止并识别'
+              ) : (
+                '开始识别'
+              )}
             </button>
-            
-            {appState.error && <div className="text-red-600 bg-red-100 p-3 rounded-lg text-center">{appState.error}</div>}
           </div>
-
-          {/* Output Section */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 flex items-center justify-center min-h-[300px] lg:min-h-full">
-            {appState.isLoading ? (
-              <Loader message={appState.statusMessage} />
-            ) : (
-              <ResultDisplay
-                transcription={appState.transcription}
-                detectedLanguage={appState.detectedLanguage}
-              />
-            )}
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
+      {error && <Toast message={error} onClose={() => setError(null)} />}
     </div>
   );
-};
-
-export default App;
+}

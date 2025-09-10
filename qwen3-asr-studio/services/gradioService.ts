@@ -1,101 +1,74 @@
 
-import { API_ENDPOINT } from '../constants';
-import { Language, TranscriptionResult, GradioMessage } from '../types';
+import { Client, predict } from "@gradio/client";
+import type { GradioClient, PredictReturn } from "@gradio/client";
+import { Language } from "../types";
 
-const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
-};
+const SPACE_ID = "Qwen/Qwen3-ASR-Demo";
+let client: Promise<GradioClient>;
 
-export const transcribeAudio = (
-  file: File,
+async function getClient() {
+  if (!client) {
+    client = Client.connect(SPACE_ID);
+  }
+  return client;
+}
+
+export const transcribeAudio = async (
+  audioFile: File,
   context: string,
   language: Language,
-  enableITN: boolean,
-  onStatusUpdate: (status: string) => void
-): Promise<TranscriptionResult> => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      onStatusUpdate('正在转换音频格式...');
-      const base64Audio = await fileToBase64(file);
-
-      const payload = {
-        data: [
-          {
-            name: file.name,
-            data: base64Audio,
-          },
-          context,
-          language,
-          enableITN,
-        ],
-      };
-
-      onStatusUpdate('正在提交转录任务...');
-      const postResponse = await fetch(API_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!postResponse.ok) {
-        throw new Error(`API 提交失败，状态码: ${postResponse.status}`);
-      }
-
-      const { event_id } = await postResponse.json();
-      if (!event_id) {
-        throw new Error('无法从 API 获取事件 ID。');
-      }
-
-      const eventSource = new EventSource(`${API_ENDPOINT}/${event_id}`);
-
-      eventSource.onmessage = (event) => {
-        try {
-          const messageData: GradioMessage = JSON.parse(event.data);
-          
-          switch (messageData.msg) {
-            case 'process_starts':
-              onStatusUpdate('转录过程已开始...');
-              break;
-            case 'progress':
-              const progress = messageData.progress_data?.[0];
-              if (progress?.desc) {
-                onStatusUpdate(progress.desc);
-              } else {
-                 onStatusUpdate('处理中...');
-              }
-              break;
-            case 'process_completed':
-              eventSource.close();
-              if (messageData.success && messageData.output?.data) {
-                const [transcription, detectedLanguage] = messageData.output.data;
-                resolve({ transcription, detectedLanguage });
-              } else {
-                reject(new Error('转录失败。API 未返回成功结果。'));
-              }
-              break;
-             case 'unexpected_error':
-                eventSource.close();
-                reject(new Error(`发生意外错误: ${messageData.log || '未知 API 错误'}`));
-                break;
-          }
-        } catch (e) {
-            // Ignore parsing errors for non-JSON messages like heartbeats
-        }
-      };
-      
-      eventSource.onerror = (err) => {
-        eventSource.close();
-        console.error('EventSource failed:', err);
-        reject(new Error('与转录服务的连接已断开。'));
-      };
-
-    } catch (error) {
-      reject(error);
-    }
+  enableItn: boolean
+): Promise<{ transcription: string; detectedLanguage: string }> => {
+  const app = await getClient();
+  const result: PredictReturn = await app.predict('/asr_inference', {
+    audio_file: audioFile,
+    context: context,
+    language: language,
+    enable_itn: enableItn,
   });
+
+  if (result.data && Array.isArray(result.data) && result.data.length >= 2) {
+    return {
+      transcription: result.data[0] as string,
+      detectedLanguage: result.data[1] as string,
+    };
+  } else {
+    throw new Error('Invalid response format from API');
+  }
+};
+
+interface GradioFile {
+  url: string;
+  orig_name: string;
+  // Other properties might exist but are not needed for this app
+}
+
+export const loadExample = async (exampleId: number): Promise<{ file: File; context: string }> => {
+  const app = await getClient();
+  let endpoint = '/lambda';
+  if (exampleId === 1) endpoint = '/lambda_1';
+  if (exampleId === 2) endpoint = '/lambda_2';
+
+  const result: PredictReturn = await app.predict(endpoint, {});
+
+  if (result.data && Array.isArray(result.data) && result.data.length >= 2) {
+    const fileData = result.data[0] as GradioFile;
+    const context = result.data[1] as string;
+
+    if (!fileData || !fileData.url) {
+        throw new Error('Example file URL not found in API response.');
+    }
+    
+    // Fetch the audio file from the URL provided by Gradio
+    const response = await fetch(fileData.url);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch example audio: ${response.statusText}`);
+    }
+    const blob = await response.blob();
+    const file = new File([blob], fileData.orig_name || `example_${exampleId}.wav`, { type: blob.type });
+
+    return { file, context };
+  } else {
+    throw new Error('Invalid response format from example API');
+  }
 };

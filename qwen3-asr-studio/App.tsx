@@ -30,7 +30,8 @@ export default function App() {
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [autoCopy, setAutoCopy] = useState(() => {
-    return localStorage.getItem('autoCopy') === 'true';
+    // Default to true if no setting is found in localStorage
+    return localStorage.getItem('autoCopy') !== 'false';
   });
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const savedTheme = localStorage.getItem('theme');

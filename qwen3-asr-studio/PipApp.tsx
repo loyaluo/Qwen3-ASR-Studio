@@ -1,42 +1,39 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { transcribeAudio } from './services/gradioService';
 import { Language } from './types';
 import { MicrophoneIcon } from './components/icons/MicrophoneIcon';
 import { StopIcon } from './components/icons/StopIcon';
 import { LoaderIcon } from './components/icons/LoaderIcon';
 import { CheckIcon } from './components/icons/CheckIcon';
+import { CameraIcon } from './components/icons/CameraIcon';
 
-type Status = 'idle' | 'recording' | 'processing' | 'error' | 'copied';
+type RecordingStatus = 'idle' | 'recording' | 'processing' | 'copied' | 'error';
+type ScreenshotStatus = 'idle' | 'capturing' | 'copied' | 'error';
 
 export const PipApp: React.FC = () => {
-    const [status, setStatus] = useState<Status>('idle');
-    const [transcription, setTranscription] = useState('');
-    const [error, setError] = useState('');
+    const [recordingStatus, setRecordingStatus] = useState<RecordingStatus>('idle');
+    const [screenshotStatus, setScreenshotStatus] = useState<ScreenshotStatus>('idle');
+    const [errorMessage, setErrorMessage] = useState('');
     
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
 
     const handleTranscription = async (audioFile: File) => {
-        setStatus('processing');
-        setTranscription('');
-        setError('');
+        setRecordingStatus('processing');
         try {
             const result = await transcribeAudio(audioFile, '', Language.AUTO, true);
             if (result.transcription) {
-                setTranscription(result.transcription);
                 await navigator.clipboard.writeText(result.transcription);
-                setStatus('copied');
-                setTimeout(() => setStatus('idle'), 2000);
+                setRecordingStatus('copied');
             } else {
-                setTranscription('');
-                setError('未能识别到任何内容。');
-                setStatus('error');
+                setErrorMessage('未能识别到任何内容。');
+                setRecordingStatus('error');
             }
         } catch (err) {
             console.error('Transcription error:', err);
-            const errorMessage = err instanceof Error ? err.message : '转录过程中发生未知错误。';
-            setError(errorMessage);
-            setStatus('error');
+            const msg = err instanceof Error ? err.message : '转录过程中发生未知错误。';
+            setErrorMessage(msg);
+            setRecordingStatus('error');
         }
     };
 
@@ -47,97 +44,149 @@ export const PipApp: React.FC = () => {
     }, []);
 
     const startRecording = async () => {
-        if (status === 'recording') return;
-        setError('');
-        setTranscription('');
-        
+        setErrorMessage('');
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            setStatus('recording');
-            
+            setRecordingStatus('recording');
             const recorder = new MediaRecorder(stream);
             mediaRecorderRef.current = recorder;
             audioChunksRef.current = [];
-            
             recorder.ondataavailable = (event) => {
                 if (event.data.size > 0) audioChunksRef.current.push(event.data);
             };
-            
             recorder.onstop = () => {
                 const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
                 const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
                 const audioFile = new File([audioBlob], `recording.${mimeType.split('/')[1]}`, { type: mimeType });
                 audioChunksRef.current = [];
                 stream.getTracks().forEach(track => track.stop());
-                
                 handleTranscription(audioFile);
             };
-            
             recorder.start();
         } catch (err) {
             console.error("Error accessing microphone:", err);
-            setError("麦克风访问被拒绝或不可用。");
-            setStatus('error');
+            setErrorMessage("麦克风访问被拒绝或不可用。");
+            setRecordingStatus('error');
+        }
+    };
+    
+    const handleRecordClick = () => {
+        if (recordingStatus === 'recording') {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    };
+    
+    const handleScreenshot = async () => {
+        setScreenshotStatus('capturing');
+        setErrorMessage('');
+        try {
+            const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+            const videoTrack = stream.getVideoTracks()[0];
+            const video = document.createElement('video');
+
+            await new Promise<void>((resolve, reject) => {
+                video.onloadedmetadata = () => {
+                    video.play().then(() => resolve()).catch(reject);
+                };
+                video.srcObject = stream;
+            });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            videoTrack.stop();
+            
+            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (blob) {
+                await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]);
+                setScreenshotStatus('copied');
+            } else {
+                throw new Error('Canvas toBlob failed');
+            }
+        } catch (err) {
+            console.error("Screenshot error:", err);
+            if (err.name !== 'NotAllowedError') {
+                setErrorMessage("截图失败。");
+                setScreenshotStatus('error');
+            } else {
+                setScreenshotStatus('idle');
+            }
         }
     };
 
-    const getStatusMessage = () => {
-        switch (status) {
-            case 'recording': return <p className="text-center text-brand-primary animate-pulse">正在录音...</p>;
-            case 'processing': return <p className="text-center text-content-200">正在识别...</p>;
-            case 'copied': return (
-                <div className="flex items-center justify-center text-brand-primary">
-                    <CheckIcon className="w-5 h-5 mr-1" />
-                    <span>已复制</span>
-                </div>
-            );
-            case 'error': return <p className="text-center text-red-500 truncate" title={error}>{error}</p>;
-            case 'idle':
-            default:
-                return null;
+    useEffect(() => {
+        if (recordingStatus === 'copied' || recordingStatus === 'error') {
+            const timer = window.setTimeout(() => {
+                setRecordingStatus('idle');
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [recordingStatus]);
+
+    useEffect(() => {
+        if (screenshotStatus === 'copied' || screenshotStatus === 'error') {
+            const timer = window.setTimeout(() => {
+                setScreenshotStatus('idle');
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [screenshotStatus]);
+    
+    useEffect(() => {
+        if (recordingStatus === 'idle' && screenshotStatus === 'idle') {
+            setErrorMessage('');
+        }
+    }, [recordingStatus, screenshotStatus]);
+
+    const getRecordingContent = () => {
+        switch (recordingStatus) {
+            case 'idle': return <><MicrophoneIcon className="w-12 h-12" /><span className="mt-2 text-lg">录音</span></>;
+            case 'recording': return <><StopIcon className="w-12 h-12" /><span className="mt-2 text-lg animate-pulse">停止</span></>;
+            case 'processing': return <><LoaderIcon className="w-12 h-12" /><span className="mt-2 text-lg">识别中</span></>;
+            case 'copied': return <><CheckIcon className="w-12 h-12 text-brand-primary" /><span className="mt-2 text-lg text-brand-primary">已复制</span></>;
+            case 'error': return <><MicrophoneIcon className="w-12 h-12 text-red-500" /><span className="mt-2 text-lg text-red-500">错误</span></>;
         }
     };
+    
+    const getScreenshotContent = () => {
+        switch (screenshotStatus) {
+            case 'idle': return <><CameraIcon className="w-12 h-12" /><span className="mt-2 text-lg">截图</span></>;
+            case 'capturing': return <><LoaderIcon className="w-12 h-12" /><span className="mt-2 text-lg">截图中</span></>;
+            case 'copied': return <><CheckIcon className="w-12 h-12 text-brand-primary" /><span className="mt-2 text-lg text-brand-primary">已复制</span></>;
+            case 'error': return <><CameraIcon className="w-12 h-12 text-red-500" /><span className="mt-2 text-lg text-red-500">错误</span></>;
+        }
+    };
+    
+    const canClickRecord = screenshotStatus === 'idle';
+    const canClickScreenshot = recordingStatus === 'idle';
 
     return (
-        <div className="flex flex-col h-screen bg-base-100 text-content-100 font-sans p-4">
-            <header className="flex items-center justify-between mb-2 h-6">
-                <h1 className="text-lg font-bold">输入法模式</h1>
-                <div className="text-sm">{getStatusMessage()}</div>
-            </header>
-
-            <div className="flex-grow p-3 rounded-lg bg-base-200 border border-base-300 overflow-y-auto">
-                {transcription || status === 'processing' ? (
-                    status === 'processing' ? (
-                        <div className="flex flex-col items-center justify-center h-full text-content-200">
-                            <LoaderIcon className="w-10 h-10 text-brand-primary mb-3" />
-                            <p>正在处理音频...</p>
-                        </div>
-                    ) : (
-                        <p className="text-content-100 whitespace-pre-wrap">{transcription}</p>
-                    )
-                ) : (
-                    <div className="flex items-center justify-center h-full">
-                        <p className="text-content-200">点击下方按钮开始录音</p>
-                    </div>
-                )}
+        <div className="flex flex-col h-screen bg-base-100 text-content-100 font-sans p-2 select-none">
+            <div 
+                onClick={canClickRecord ? handleRecordClick : undefined}
+                className={`flex-1 flex flex-col items-center justify-center m-1 rounded-lg transition-all duration-200 border
+                    ${recordingStatus === 'recording' ? 'bg-red-600/20 border-red-500' : 'bg-base-200 border-base-300'}
+                    ${!canClickRecord ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-base-300'}
+                `}
+                aria-disabled={!canClickRecord}
+            >
+                {getRecordingContent()}
             </div>
-
-            <div className="flex justify-center items-center pt-6 pb-2">
-                <button
-                    onClick={status === 'recording' ? stopRecording : startRecording}
-                    disabled={status === 'processing' || status === 'copied'}
-                    aria-label={status === 'recording' ? '停止录音' : '开始录音'}
-                    className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg text-white focus:outline-none focus:ring-4 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed
-                        ${status === 'recording' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 'bg-brand-primary hover:bg-brand-secondary focus:ring-brand-primary'}
-                    `}
-                >
-                    {status === 'processing' ? 
-                        <LoaderIcon className="w-10 h-10" /> :
-                        status === 'recording' ? 
-                        <StopIcon className="w-8 h-8" /> :
-                        <MicrophoneIcon className="w-8 h-8" />
-                    }
-                </button>
+            <div 
+                onClick={canClickScreenshot ? handleScreenshot : undefined}
+                className={`flex-1 flex flex-col items-center justify-center m-1 rounded-lg transition-all duration-200 border bg-base-200 border-base-300
+                    ${!canClickScreenshot ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-base-300'}
+                `}
+                 aria-disabled={!canClickScreenshot}
+            >
+                {getScreenshotContent()}
+            </div>
+             <div className="h-6 text-center text-sm p-1 text-red-500 truncate" title={errorMessage}>
+                {(recordingStatus === 'error' || screenshotStatus === 'error') && errorMessage}
             </div>
         </div>
     );

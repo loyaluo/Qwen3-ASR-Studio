@@ -23,23 +23,11 @@ const formatTime = (timeInSeconds: number) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const TabButton: React.FC<{ title: string; active: boolean; onClick: () => void; disabled?: boolean }> = ({ title, active, onClick, disabled }) => {
-    const baseClasses = "px-4 py-2 text-sm font-medium transition-colors duration-200 focus:outline-none";
-    const activeClasses = "text-brand-primary border-b-2 border-brand-primary";
-    const inactiveClasses = "text-content-200 hover:text-content-100 border-b-2 border-transparent";
-    return (
-        <button onClick={onClick} disabled={disabled} className={`${baseClasses} ${active ? activeClasses : inactiveClasses} disabled:opacity-50 disabled:cursor-not-allowed`}>
-            {title}
-        </button>
-    )
-}
-
 export const AudioUploader = forwardRef<AudioUploaderHandle, AudioUploaderProps>(({ file, onFileChange, onRecordingChange, disabled, onRecordingError }, ref) => {
   const [isDragging, setIsDragging] = useState(false);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTab, setActiveTab] = useState<'upload' | 'record'>('upload');
   const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording'>('idle');
   const [recordingTime, setRecordingTime] = useState(0);
 
@@ -307,68 +295,64 @@ export const AudioUploader = forwardRef<AudioUploaderHandle, AudioUploaderProps>
   }
 
   return (
-    <div className="rounded-lg bg-base-200 border border-base-300">
-        <div className="flex border-b border-base-300 px-2">
-            <TabButton title="上传文件" active={activeTab === 'upload'} onClick={() => setActiveTab('upload')} disabled={disabled} />
-            <TabButton title="录制音频" active={activeTab === 'record'} onClick={() => setActiveTab('record')} disabled={disabled} />
+    <>
+      <div className="p-4 rounded-lg bg-base-200 border border-base-300">
+        <h3 className="text-sm font-medium text-content-200 mb-3">上传文件</h3>
+        <div
+          className={`${baseClasses} ${disabled ? disabledClasses : isDragging ? draggingClasses : idleClasses}`}
+          onDragEnter={onDragEnter}
+          onDragLeave={onDragLeave}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onClick={onButtonClick}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept="audio/*"
+            className="hidden"
+            onChange={(e) => handleFileSelect(e.target.files?.[0])}
+            disabled={disabled}
+          />
+          <div className="flex flex-col items-center justify-center text-center">
+            <UploadIcon className="w-12 h-12 mb-3 text-content-200" />
+            <p className="font-semibold text-content-100">
+              点击上传或拖拽文件
+            </p>
+            <p className="text-sm text-content-200">支持 WAV, MP3, FLAC 等格式</p>
+          </div>
         </div>
-        <div className="p-4">
-            {activeTab === 'upload' && (
-                 <div
-                    className={`${baseClasses} ${disabled ? disabledClasses : isDragging ? draggingClasses : idleClasses}`}
-                    onDragEnter={onDragEnter}
-                    onDragLeave={onDragLeave}
-                    onDragOver={onDragOver}
-                    onDrop={onDrop}
-                    onClick={onButtonClick}
-                    >
-                    <input
-                        ref={inputRef}
-                        type="file"
-                        accept="audio/*"
-                        className="hidden"
-                        onChange={(e) => handleFileSelect(e.target.files?.[0])}
-                        disabled={disabled}
-                    />
-                    <div className="flex flex-col items-center justify-center text-center">
-                        <UploadIcon className="w-12 h-12 mb-3 text-content-200" />
-                        <p className="font-semibold text-content-100">
-                        点击上传或拖拽文件
-                        </p>
-                        <p className="text-sm text-content-200">支持 WAV, MP3, FLAC 等格式</p>
-                    </div>
-                </div>
+      </div>
+      <div className="p-4 rounded-lg bg-base-200 border border-base-300">
+        <h3 className="text-sm font-medium text-content-200 mb-3">或录制音频</h3>
+        <div className="flex flex-col items-center justify-center min-h-[190px]">
+          <button
+            onClick={recordingStatus === 'idle' ? handleStartRecording : handleStopRecording}
+            disabled={disabled}
+            className={`flex items-center justify-center w-36 h-14 px-4 py-2 font-semibold text-white transition-colors duration-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-200 ${
+              recordingStatus === 'idle' 
+                ? 'bg-brand-primary hover:bg-brand-secondary focus:ring-brand-primary' 
+                : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {recordingStatus === 'idle' ? (
+              <MicrophoneIcon className="w-6 h-6 mr-2" />
+            ) : (
+              <StopIcon className="w-6 h-6 mr-2" />
             )}
-            {activeTab === 'record' && (
-                <div className="flex flex-col items-center justify-center min-h-[190px]">
-                    <button
-                        onClick={recordingStatus === 'idle' ? handleStartRecording : handleStopRecording}
-                        disabled={disabled}
-                        className={`flex items-center justify-center w-36 h-14 px-4 py-2 font-semibold text-white transition-colors duration-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-200 ${
-                            recordingStatus === 'idle' 
-                            ? 'bg-brand-primary hover:bg-brand-secondary focus:ring-brand-primary' 
-                            : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                        {recordingStatus === 'idle' ? (
-                            <MicrophoneIcon className="w-6 h-6 mr-2" />
-                        ) : (
-                            <StopIcon className="w-6 h-6 mr-2" />
-                        )}
-                        {recordingStatus === 'idle' ? '开始录音' : '停止录音'}
-                    </button>
-                    <p className="mt-4 text-2xl font-mono text-content-100 tracking-wider">
-                        {formatTime(recordingTime)}
-                    </p>
-                     {recordingStatus === 'recording' && (
-                        <div className="w-full mt-2 h-16 bg-base-100 rounded-md">
-                            <canvas ref={canvasRef} className="w-full h-full" />
-                        </div>
-                    )}
-                    {recordingStatus === 'recording' && <p className="text-sm text-brand-primary animate-pulse mt-1">正在录音...</p>}
-                </div>
-            )}
+            {recordingStatus === 'idle' ? '开始录音' : '停止录音'}
+          </button>
+          <p className="mt-4 text-2xl font-mono text-content-100 tracking-wider">
+            {formatTime(recordingTime)}
+          </p>
+          {recordingStatus === 'recording' && (
+            <div className="w-full mt-2 h-16 bg-base-100 rounded-md">
+              <canvas ref={canvasRef} className="w-full h-full" />
+            </div>
+          )}
+          {recordingStatus === 'recording' && <p className="text-sm text-brand-primary animate-pulse mt-1">正在录音...</p>}
         </div>
-    </div>
+      </div>
+    </>
   );
 });

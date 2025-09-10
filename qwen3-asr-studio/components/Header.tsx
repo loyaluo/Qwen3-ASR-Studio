@@ -15,11 +15,13 @@ export const Header: React.FC<{ onSettingsClick: () => void }> = ({ onSettingsCl
     <header className="flex items-center justify-between">
       <div className="flex-1"></div>
       <div className="flex items-center justify-center flex-shrink-0 mx-4">
-        <img
-          src="https://modelscope.oss-cn-beijing.aliyuncs.com/resource/00EE8C99-9C05-4236-A6D0-B58FF172D31B.png"
-          alt="Qwen3 ASR Studio"
-          className="h-14 sm:h-16 w-auto"
-        />
+        <a href="https://qwen3-asr-studio.pages.dev/" target="_blank" rel="noopener noreferrer">
+          <img
+            src="https://modelscope.oss-cn-beijing.aliyuncs.com/resource/00EE8C99-9C05-4236-A6D0-B58FF172D31B.png"
+            alt="Qwen3 ASR Studio"
+            className="h-14 sm:h-16 w-auto cursor-pointer"
+          />
+        </a>
       </div>
       <div className="flex-1 flex justify-end gap-2">
         <button

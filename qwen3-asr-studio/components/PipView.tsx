@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { transcribeAudio } from '../services/gradioService';
 import { Language } from '../types';
@@ -91,16 +90,6 @@ export const PipView: React.FC<PipViewProps> = ({ transcribeAudio, onTranscripti
         }
         // Do nothing if processing
     };
-
-    useEffect(() => {
-        if (status === 'success' || status === 'error') {
-            const timer = window.setTimeout(() => {
-                setStatus('idle');
-                setMessage('点击开始录音');
-            }, 4000);
-            return () => clearTimeout(timer);
-        }
-    }, [status]);
 
     const getIcon = () => {
         const iconClass = "w-7 h-7 text-white";

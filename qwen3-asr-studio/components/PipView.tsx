@@ -23,10 +23,17 @@ interface PipViewProps {
 export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, context, language, enableItn }) => {
     type Status = 'idle' | 'recording' | 'processing' | 'success' | 'error';
     const [status, setStatus] = useState<Status>('idle');
-    const [message, setMessage] = useState<string>('点击开始录音');
+    const [message, setMessage] = useState<string>('');
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
+
+    useEffect(() => {
+        if (status === 'success' && inputRef.current) {
+            inputRef.current.select();
+        }
+    }, [status]);
 
     const handleTranscription = useCallback(async (audioFile: File) => {
         setStatus('processing');
@@ -146,7 +153,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
 
     return (
         <div 
-            className="flex items-center h-screen w-full bg-base-100 font-sans text-content-100 select-none p-4"
+            className="flex items-center h-screen w-full bg-base-100 font-sans text-content-100 p-4"
         >
             <style>{`
                 @keyframes pulse-custom { 50% { opacity: .6; } }
@@ -163,9 +170,14 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
             >
                 {getIcon()}
             </button>
-            <p className={`ml-4 text-2xl font-semibold break-all truncate ${status === 'success' || status === 'error' ? 'text-content-100' : 'text-content-200'}`}>
-                {message}
-            </p>
+            <input
+                ref={inputRef}
+                type="text"
+                readOnly
+                value={message}
+                placeholder='点击开始录音'
+                className={`ml-4 text-2xl font-semibold bg-transparent border-none focus:ring-0 p-0 w-full placeholder-content-200 ${status === 'success' || status === 'error' ? 'text-content-100' : 'text-content-200'}`}
+            />
         </div>
     );
 };

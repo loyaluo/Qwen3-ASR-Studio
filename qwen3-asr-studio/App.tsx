@@ -156,23 +156,25 @@ export default function App() {
     localStorage.setItem('enableItn', String(enableItn));
   }, [enableItn]);
 
-  const handleTranscriptionResultFromPip = useCallback((result: {
+  const handleTranscriptionResultFromPip = useCallback(async (result: {
     transcription: string;
     detectedLanguage: string;
     audioFile: File;
-    copied: boolean;
-    error?: string;
   }) => {
     // Sync state with main page
     setAudioFile(result.audioFile);
     setTranscription(result.transcription);
     setDetectedLanguage(result.detectedLanguage);
 
-    // Show notification
-    if (result.copied) {
-      setNotification({ message: '输入法模式识别结果已复制', type: 'success' });
-    } else if (result.transcription) {
-      setNotification({ message: `识别成功，但复制失败${result.error ? `: ${result.error}` : ''}`, type: 'error' });
+    // Show notification based on copy success
+    if (result.transcription) {
+      try {
+        await navigator.clipboard.writeText(result.transcription);
+        setNotification({ message: '输入法模式识别结果已复制', type: 'success' });
+      } catch (copyError) {
+        console.error('Failed to copy text from main window:', copyError);
+        setNotification({ message: '识别成功，但自动复制失败', type: 'error' });
+      }
     }
 
     // Add to history

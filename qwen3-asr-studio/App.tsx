@@ -56,22 +56,62 @@ export default function App() {
       : CompressionLevel.ORIGINAL; // Default to original
   });
 
+  const handleError = useCallback((message: string) => {
+      setNotification({ message, type: 'error' });
+  }, []);
+
+  const handleLoadExample = useCallback(async (exampleId: number) => {
+    setIsLoading(true);
+    setNotification(null);
+    setAudioFile(null);
+    setTranscription('');
+    setDetectedLanguage('');
+    
+    const onProgress = (message: string) => {
+      setLoadingMessage(message);
+    };
+
+    try {
+      const { file, context: exampleContext } = await loadExample(exampleId, onProgress);
+      setAudioFile(file);
+      setContext(exampleContext);
+    } catch (err) {
+      console.error('Example loading error:', err);
+      const errorMessage = err instanceof Error ? err.message : '加载示例音频失败。';
+      handleError(errorMessage);
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
+    }
+  }, [handleError]);
+
   // Load cached recording and history on mount
   useEffect(() => {
     const loadInitialData = async () => {
+      let audioLoaded = false;
       try {
         const cachedRecording = await getCachedRecording();
         if (cachedRecording) {
           setAudioFile(cachedRecording);
+          audioLoaded = true;
         }
+      } catch (error) {
+        console.error("Failed to load cached recording:", error);
+      }
+
+      try {
         const historyItems = await getHistory();
         setHistory(historyItems);
       } catch (error) {
-        console.error("Failed to load initial data:", error);
+        console.error("Failed to load history:", error);
+      }
+      
+      if (!audioLoaded) {
+        handleLoadExample(0);
       }
     };
     loadInitialData();
-  }, []);
+  }, [handleLoadExample]);
 
   // Effect to manage theme
   useEffect(() => {
@@ -139,10 +179,6 @@ export default function App() {
       clearCachedRecording().catch(console.error);
       audioUploaderRef.current?.clearInput();
     }
-  };
-  
-  const handleError = (message: string) => {
-      setNotification({ message, type: 'error' });
   };
 
   const transcribeNow = useCallback(async (file: File, bypassCache = false) => {
@@ -226,7 +262,7 @@ export default function App() {
       setIsLoading(false);
       setLoadingMessage('');
     }
-  }, [context, language, enableItn, autoCopy, compressionLevel]);
+  }, [context, language, enableItn, autoCopy, compressionLevel, handleError]);
 
   const handleTranscribe = useCallback(async () => {
     if (isRecording && audioUploaderRef.current) {
@@ -242,7 +278,7 @@ export default function App() {
     
     transcribeNow(audioFile, false);
 
-  }, [audioFile, isRecording, transcribeNow]);
+  }, [audioFile, isRecording, transcribeNow, handleError]);
 
   const handleRetry = useCallback(() => {
     if (audioFile) {
@@ -298,31 +334,6 @@ export default function App() {
     };
   }, [isRecording, isLoading, handleTranscribe, isSettingsOpen]);
 
-
-  const handleLoadExample = useCallback(async (exampleId: number) => {
-    setIsLoading(true);
-    setNotification(null);
-    setAudioFile(null);
-    setTranscription('');
-    setDetectedLanguage('');
-    
-    const onProgress = (message: string) => {
-      setLoadingMessage(message);
-    };
-
-    try {
-      const { file, context: exampleContext } = await loadExample(exampleId, onProgress);
-      setAudioFile(file);
-      setContext(exampleContext);
-    } catch (err) {
-      console.error('Example loading error:', err);
-      const errorMessage = err instanceof Error ? err.message : '加载示例音频失败。';
-      handleError(errorMessage);
-    } finally {
-      setIsLoading(false);
-      setLoadingMessage('');
-    }
-  }, []);
 
   const handleDeleteHistory = async (id: number) => {
     try {

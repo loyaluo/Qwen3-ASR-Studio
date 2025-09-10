@@ -6,6 +6,22 @@
     <link rel="icon" type="image/png" href="https://cdn-avatars.huggingface.co/v1/production/uploads/620760a26e3b7210c2ff1943/-s1gyJfvbE1RgO5iBeNOi.png" sizes="200x200" />
     <title>输入法模式 - Qwen3-ASR</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @keyframes pulse-ring {
+        0% {
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+        }
+        70% {
+          box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        }
+      }
+      .animate-pulse-ring {
+        animation: pulse-ring 2s infinite;
+      }
+    </style>
     <script>
       tailwind.config = {
         theme: {

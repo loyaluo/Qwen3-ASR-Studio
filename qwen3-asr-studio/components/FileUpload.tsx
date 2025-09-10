@@ -24,7 +24,9 @@ export const FileUpload = forwardRef<FileUploadHandle, FileUploadProps>(({ onFil
   }));
 
   const handleFileSelect = useCallback((selectedFile: File | undefined) => {
-    if (selectedFile && selectedFile.type.startsWith('audio/')) {
+    // Removed strict MIME type check to allow more flexible uploads.
+    // The backend will handle the ultimate validation.
+    if (selectedFile) {
       onFileSelect(selectedFile);
     }
   }, [onFileSelect]);
@@ -76,7 +78,7 @@ export const FileUpload = forwardRef<FileUploadHandle, FileUploadProps>(({ onFil
       <input
         ref={inputRef}
         type="file"
-        accept="audio/*"
+        accept="audio/*,.mp3,.wav,.flac,.m4a,.ogg,.opus,.aac,.webm"
         className="hidden"
         onChange={(e) => handleFileSelect(e.target.files?.[0])}
         disabled={disabled}

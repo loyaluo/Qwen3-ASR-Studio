@@ -1,11 +1,11 @@
-import type { HistoryItem } from '../types';
+import type { HistoryItem, NoteItem } from '../types';
 
 const DB_NAME = 'ASR-Cache';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const TRANSCRIPTIONS_STORE = 'transcriptions';
 const RECORDINGS_STORE = 'recordings';
 const HISTORY_STORE = 'history';
-const RECORDING_KEY = 'last_recording';
+const NOTES_STORE = 'notes';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -33,6 +33,9 @@ function getDb(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains(HISTORY_STORE)) {
           db.createObjectStore(HISTORY_STORE, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(NOTES_STORE)) {
+          db.createObjectStore(NOTES_STORE, { keyPath: 'id' });
         }
       };
     });
@@ -188,6 +191,52 @@ export async function clearHistory(): Promise<void> {
         request.onsuccess = () => resolve();
         request.onerror = () => {
             console.error('Failed to clear history:', request.error);
+            reject(request.error);
+        }
+    });
+}
+
+// --- Notes Functions ---
+
+export async function addNoteItem(item: NoteItem): Promise<void> {
+  const db = await getDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(NOTES_STORE, 'readwrite');
+    const store = transaction.objectStore(NOTES_STORE);
+    const request = store.put(item);
+    request.onsuccess = () => resolve();
+    request.onerror = () => {
+        console.error('Failed to add note item:', request.error);
+        reject(request.error);
+    }
+  });
+}
+
+export async function getNotes(): Promise<NoteItem[]> {
+  const db = await getDb();
+  return new Promise((resolve) => {
+    const transaction = db.transaction(NOTES_STORE, 'readonly');
+    const store = transaction.objectStore(NOTES_STORE);
+    const request = store.getAll();
+    request.onsuccess = () => {
+      resolve((request.result || []).sort((a, b) => b.timestamp - a.timestamp));
+    };
+    request.onerror = () => {
+      console.error('Failed to get notes:', request.error);
+      resolve([]);
+    };
+  });
+}
+
+export async function deleteNoteItem(id: number): Promise<void> {
+    const db = await getDb();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(NOTES_STORE, 'readwrite');
+        const store = transaction.objectStore(NOTES_STORE);
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => {
+            console.error('Failed to delete note item:', request.error);
             reject(request.error);
         }
     });

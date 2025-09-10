@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface ExampleButtonsProps {
@@ -12,7 +11,7 @@ export const ExampleButtons: React.FC<ExampleButtonsProps> = ({ onLoadExample, d
   
   return (
     <div className="p-4 rounded-lg bg-base-200 border border-base-300">
-      <h3 className="mb-2 text-sm font-medium text-content-200">或试试示例音频：</h3>
+      <h3 className="mb-2 text-sm font-medium text-content-200">示例音频</h3>
       <div className="grid grid-cols-3 gap-2">
         <button onClick={() => onLoadExample(0)} disabled={disabled} className={`${commonButtonClasses} ${activeClasses}`}>
           📎 Example 1 - CSGO比赛

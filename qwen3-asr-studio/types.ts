@@ -24,3 +24,9 @@ export interface HistoryItem {
   timestamp: number;
   audioFile: File;
 }
+
+export interface NoteItem {
+  id: number;
+  content: string;
+  timestamp: number;
+}

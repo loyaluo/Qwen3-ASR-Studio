@@ -1,15 +1,20 @@
-
-import React, { useState, useEffect } from 'react';
-import { CopyIcon } from './icons/CopyIcon';
-import { CheckIcon } from './icons/CheckIcon';
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { LanguageIcon } from './icons/LanguageIcon';
 import { LoaderIcon } from './icons/LoaderIcon';
 
 interface ResultDisplayProps {
   transcription: string;
+  setTranscription: (value: string | ((prev: string) => string)) => void;
   detectedLanguage: string;
   isLoading: boolean;
   loadingStatus?: string;
+  transcriptionMode: 'single' | 'notes';
+  onModeChange: (mode: 'single' | 'notes') => void;
+  onSaveNote: () => void;
+}
+
+export interface ResultDisplayHandle {
+  insertText: (text: string) => void;
 }
 
 const loadingMessages = [
@@ -21,76 +26,131 @@ const loadingMessages = [
   "快好了...",
 ];
 
+export const ResultDisplay = forwardRef<ResultDisplayHandle, ResultDisplayProps>(
+  ({ transcription, setTranscription, detectedLanguage, isLoading, loadingStatus, transcriptionMode, onModeChange, onSaveNote }, ref) => {
+    const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-export const ResultDisplay: React.FC<ResultDisplayProps> = ({ transcription, detectedLanguage, isLoading, loadingStatus }) => {
-  const [copied, setCopied] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
+    useImperativeHandle(ref, () => ({
+      insertText: (textToInsert) => {
+        const textarea = textareaRef.current;
+        
+        // This function is intended for notes mode.
+        if (transcriptionMode === 'notes' && textarea) {
+          // If the textarea is available, we insert at the cursor.
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          const currentText = textarea.value;
 
-  useEffect(() => {
-    if (copied) {
-      const timer = setTimeout(() => setCopied(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [copied]);
+          const newText = currentText.slice(0, start) + textToInsert + currentText.slice(end);
+          setTranscription(newText);
+          
+          // Defer setting selection to after the component re-renders
+          setTimeout(() => {
+            if (textareaRef.current) {
+              const newCursorPosition = start + textToInsert.length;
+              textareaRef.current.selectionStart = newCursorPosition;
+              textareaRef.current.selectionEnd = newCursorPosition;
+              textareaRef.current.focus();
+            }
+          }, 0);
+        } else if (transcriptionMode === 'notes') {
+          // Fallback for notes mode when the textarea isn't rendered yet. Append to the end to prevent data loss.
+          setTranscription(prev => prev + textToInsert);
+        } else {
+          // This path should not be hit based on App.tsx logic, but as a safeguard, we honor single-mode behavior.
+          setTranscription(textToInsert);
+        }
+      },
+    }));
 
-  useEffect(() => {
-    if (isLoading && !loadingStatus) {
-      let messageIndex = 0;
-      const interval = setInterval(() => {
-        messageIndex = (messageIndex + 1) % loadingMessages.length;
-        setLoadingMessage(loadingMessages[messageIndex]);
-      }, 2500);
+    useEffect(() => {
+      if (isLoading && !loadingStatus) {
+        let messageIndex = 0;
+        const interval = setInterval(() => {
+          messageIndex = (messageIndex + 1) % loadingMessages.length;
+          setLoadingMessage(loadingMessages[messageIndex]);
+        }, 2500);
 
-      return () => {
-        clearInterval(interval);
-        setLoadingMessage(loadingMessages[0]);
-      };
-    }
-  }, [isLoading, loadingStatus]);
+        return () => {
+          clearInterval(interval);
+          setLoadingMessage(loadingMessages[0]);
+        };
+      }
+    }, [isLoading, loadingStatus]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(transcription);
-    setCopied(true);
-  };
-  
-  const hasResult = transcription || detectedLanguage;
+    const hasResult = transcription || (detectedLanguage && transcriptionMode === 'single');
 
-  return (
-    <div className="flex flex-col flex-grow p-4 rounded-lg bg-base-200 border border-base-300">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-content-100">识别结果</h3>
-        {transcription && (
-          <button
-            onClick={handleCopy}
-            className="flex items-center px-3 py-1 text-sm rounded-md transition-colors bg-base-300 text-content-200 hover:bg-brand-primary hover:text-white"
-          >
-            {copied ? <CheckIcon className="w-4 h-4 mr-1" /> : <CopyIcon className="w-4 h-4 mr-1" />}
-            {copied ? '已复制!' : '复制'}
-          </button>
-        )}
-      </div>
-      <div className="flex-grow p-4 rounded-md bg-base-100 min-h-[200px] overflow-y-auto">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <LoaderIcon className="h-10 text-brand-primary mb-4" />
-            <p className="text-content-200 px-4">{loadingStatus || loadingMessage}</p>
+    return (
+      <div className="flex flex-col rounded-lg bg-base-200 border border-base-300 flex-grow">
+        <div className="flex items-center justify-between p-2 border-b border-base-300">
+          <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-base-300">
+            <button
+              onClick={() => onModeChange('single')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                transcriptionMode === 'single' ? 'bg-brand-primary text-white' : 'hover:bg-base-200'
+              }`}
+            >
+              单次模式
+            </button>
+            <button
+              onClick={() => onModeChange('notes')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                transcriptionMode === 'notes' ? 'bg-brand-primary text-white' : 'hover:bg-base-200'
+              }`}
+            >
+              笔记模式
+            </button>
           </div>
-        ) : hasResult ? (
-          <div>
-            {detectedLanguage && (
-                <div className="flex items-center gap-2 mb-4 p-2 text-sm rounded-md bg-base-200 text-content-200 border border-base-300">
-                    <LanguageIcon className="w-5 h-5 text-brand-primary" />
-                    <span>识别语言: <strong>{detectedLanguage}</strong></span>
+          {transcriptionMode === 'single' && detectedLanguage && !isLoading && (
+            <div className="flex items-center gap-2 px-2 text-sm text-content-200">
+                <LanguageIcon className="w-5 h-5 text-brand-primary" />
+                <span>识别语言: <strong>{detectedLanguage}</strong></span>
+            </div>
+          )}
+          {transcriptionMode === 'notes' && !isLoading && (
+            <button
+              onClick={onSaveNote}
+              disabled={!transcription.trim()}
+              title="保存笔记"
+              className="px-3 py-1 text-sm font-medium rounded-md transition-colors bg-base-100 border border-base-300 text-content-100 hover:bg-brand-primary hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              保存
+            </button>
+          )}
+        </div>
+        <div className="relative p-4 rounded-b-lg bg-base-100 flex-grow overflow-y-auto">
+          {isLoading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center h-full text-center bg-base-100 bg-opacity-90 z-10">
+              <LoaderIcon className="h-10 text-brand-primary" />
+            </div>
+          )}
+
+          {transcriptionMode === 'notes' ? (
+            <textarea
+              ref={textareaRef}
+              value={transcription}
+              onChange={(e) => setTranscription(e.target.value)}
+              placeholder="识别结果将显示并可在此处编辑..."
+              className="w-full h-full bg-transparent resize-none focus:outline-none text-content-100"
+              aria-label="识别结果笔记"
+              disabled={isLoading}
+            />
+          ) : (
+            !isLoading && (
+              hasResult ? (
+                <div>
+                  <p className="text-content-100 whitespace-pre-wrap">{transcription}</p>
                 </div>
-            )}
-            <p className="text-content-100 whitespace-pre-wrap">{transcription}</p>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-content-200">识别结果将显示在这里。</p>
-          </div>
-        )}
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-content-200">识别结果将显示在这里。</p>
+                </div>
+              )
+            )
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  }
+);

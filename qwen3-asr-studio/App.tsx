@@ -3,25 +3,30 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Header } from './components/Header';
 import { AudioUploader, type AudioUploaderHandle } from './components/AudioUploader';
-import { ResultDisplay } from './components/ResultDisplay';
+import { ResultDisplay, type ResultDisplayHandle } from './components/ResultDisplay';
 import { ExampleButtons } from './components/ExampleButtons';
 import { transcribeAudio, loadExample } from './services/gradioService';
-import { Language, CompressionLevel, HistoryItem } from './types';
+import { Language, CompressionLevel, HistoryItem, NoteItem } from './types';
 import { Toast } from './components/Toast';
 import { LoaderIcon } from './components/icons/LoaderIcon';
 import { SettingsPanel } from './components/SettingsPanel';
 import { compressAudio } from './services/audioService';
-import { getFileHash, getCachedTranscription, setCachedTranscription, getCachedRecording, clearCachedRecording, addHistoryItem, getHistory, deleteHistoryItem, clearHistory } from './services/cacheService';
+import { getFileHash, getCachedTranscription, setCachedTranscription, getCachedRecording, clearCachedRecording, addHistoryItem, getHistory, deleteHistoryItem, clearHistory, addNoteItem, getNotes, deleteNoteItem } from './services/cacheService';
 import { AudioPreview } from './components/AudioPreview';
 import { HistoryPanel } from './components/HistoryPanel';
+import { NotesPanel } from './components/NotesPanel';
 import { RetryIcon } from './components/icons/RetryIcon';
 import { PipView } from './components/PipView';
 import { StopIcon } from './components/icons/StopIcon';
+import { CopyIcon } from './components/icons/CopyIcon';
+import { CheckIcon } from './components/icons/CheckIcon';
 
 type Notification = {
   message: string;
   type: 'error' | 'success';
 }
+
+type TranscriptionMode = 'single' | 'notes';
 
 declare global {
     interface Window {
@@ -48,6 +53,10 @@ export default function App() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const isSpaceDown = useRef(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
+  const [copied, setCopied] = useState(false);
+  const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>('single');
+  const resultDisplayRef = useRef<ResultDisplayHandle>(null);
 
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -60,7 +69,7 @@ export default function App() {
     if (savedTheme === 'light' || savedTheme === 'dark') {
       return savedTheme;
     }
-    return 'dark'; // Default to dark as per original UI
+    return 'light'; // Default to light
   });
   const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>(() => {
     const savedLevel = localStorage.getItem('compressionLevel') as CompressionLevel;
@@ -117,8 +126,10 @@ export default function App() {
       try {
         const historyItems = await getHistory();
         setHistory(historyItems);
+        const noteItems = await getNotes();
+        setNotes(noteItems);
       } catch (error) {
-        console.error("Failed to load history:", error);
+        console.error("Failed to load history or notes:", error);
       }
     };
     loadInitialData();
@@ -156,6 +167,13 @@ export default function App() {
     localStorage.setItem('enableItn', String(enableItn));
   }, [enableItn]);
 
+  useEffect(() => {
+    if (copied) {
+      const timer = setTimeout(() => setCopied(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [copied]);
+
   const handleTranscriptionResultFromPip = useCallback(async (result: {
     transcription: string;
     detectedLanguage: string;
@@ -163,8 +181,15 @@ export default function App() {
   }) => {
     // Sync state with main page
     setAudioFile(result.audioFile);
-    setTranscription(result.transcription);
-    setDetectedLanguage(result.detectedLanguage);
+    
+    if (transcriptionMode === 'single') {
+      setTranscription(result.transcription);
+      setDetectedLanguage(result.detectedLanguage);
+    } else {
+      const prefix = transcription.length > 0 && !/[\s\n]$/.test(transcription) ? ' ' : '';
+      resultDisplayRef.current?.insertText(prefix + result.transcription);
+      setDetectedLanguage('');
+    }
 
     // Show notification based on copy success
     if (result.transcription) {
@@ -199,7 +224,7 @@ export default function App() {
       };
       saveHistory();
     }
-  }, [context]);
+  }, [context, transcriptionMode, transcription]);
 
   const closePip = useCallback(() => {
     if (pipWindow) {
@@ -267,8 +292,10 @@ export default function App() {
 
   const handleFileChange = (file: File | null) => {
     setAudioFile(file);
-    setTranscription('');
-    setDetectedLanguage('');
+    if (transcriptionMode === 'single') {
+        setTranscription('');
+        setDetectedLanguage('');
+    }
     setNotification(null);
     if (file === null) {
       clearCachedRecording().catch(console.error);
@@ -288,8 +315,11 @@ export default function App() {
     
     setIsLoading(true);
     setNotification(null);
-    setTranscription('');
-    setDetectedLanguage('');
+    
+    if (transcriptionMode === 'single') {
+        setTranscription('');
+        setDetectedLanguage('');
+    }
     
     const onProgress = (message: string) => {
       setLoadingMessage(message);
@@ -303,14 +333,17 @@ export default function App() {
       let finalLanguage: string;
 
       if (cachedResult) {
-        setTranscription(cachedResult.transcription);
-        setDetectedLanguage(cachedResult.detectedLanguage);
         finalTranscription = cachedResult.transcription;
         finalLanguage = cachedResult.detectedLanguage;
 
         if (autoCopy && cachedResult.transcription) {
-          navigator.clipboard.writeText(cachedResult.transcription);
-          setNotification({ message: '识别结果已从缓存加载并复制', type: 'success' });
+          try {
+            await navigator.clipboard.writeText(cachedResult.transcription);
+            setNotification({ message: '识别结果已从缓存加载并复制', type: 'success' });
+          } catch (copyError) {
+            console.error('Failed to auto-copy cached result:', copyError);
+            handleError('从缓存加载成功，但自动复制失败');
+          }
         } else {
           setNotification({ message: '识别结果已从缓存加载', type: 'success' });
         }
@@ -318,8 +351,6 @@ export default function App() {
           onProgress('正在压缩音频（如果需要）...');
           const fileToTranscribe = await compressAudio(file, compressionLevel);
           const result = await transcribeAudio(fileToTranscribe, context, language, enableItn, onProgress, controller.signal);
-          setTranscription(result.transcription);
-          setDetectedLanguage(result.detectedLanguage);
           finalTranscription = result.transcription;
           finalLanguage = result.detectedLanguage;
 
@@ -331,9 +362,23 @@ export default function App() {
           }
 
           if (autoCopy && result.transcription) {
-            navigator.clipboard.writeText(result.transcription);
-            setNotification({ message: '识别结果已复制到剪贴板', type: 'success' });
+            try {
+              await navigator.clipboard.writeText(result.transcription);
+              setNotification({ message: '识别结果已复制到剪贴板', type: 'success' });
+            } catch (copyError) {
+              console.error('Failed to auto-copy new result:', copyError);
+              handleError('识别成功，但自动复制失败');
+            }
           }
+      }
+      
+      if (transcriptionMode === 'single') {
+        setTranscription(finalTranscription);
+        setDetectedLanguage(finalLanguage);
+      } else {
+        const prefix = transcription.length > 0 && !/[\s\n]$/.test(transcription) ? ' ' : '';
+        resultDisplayRef.current?.insertText(prefix + finalTranscription);
+        setDetectedLanguage('');
       }
 
       if (finalTranscription) {
@@ -366,7 +411,7 @@ export default function App() {
       setIsLoading(false);
       setLoadingMessage('');
     }
-  }, [context, language, enableItn, autoCopy, compressionLevel, handleError]);
+  }, [context, language, enableItn, autoCopy, compressionLevel, handleError, transcriptionMode, transcription]);
 
   const handleTranscribe = useCallback(async () => {
     if (isRecording && audioUploaderRef.current) {
@@ -387,6 +432,19 @@ export default function App() {
   const handleCancel = useCallback(() => {
     abortControllerRef.current?.abort();
   }, []);
+
+  const handleCopy = useCallback(async () => {
+    if (transcription) {
+      try {
+        await navigator.clipboard.writeText(transcription);
+        setCopied(true);
+        setNotification({ message: '识别结果已复制到剪贴板', type: 'success' });
+      } catch (err) {
+        console.error('Failed to copy text:', err);
+        handleError('复制失败，请检查浏览器权限。');
+      }
+    }
+  }, [transcription, handleError]);
 
   const handleRetry = useCallback(() => {
     if (audioFile) {
@@ -470,6 +528,7 @@ export default function App() {
       setTranscription(item.transcription);
       setDetectedLanguage(item.detectedLanguage);
       setContext(item.context);
+      setTranscriptionMode('single'); // Always restore to single mode for clarity
       setNotification({ message: '已从历史记录恢复', type: 'success' });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -477,6 +536,52 @@ export default function App() {
     }
   };
 
+  const handleModeChange = (newMode: TranscriptionMode) => {
+    if (newMode !== transcriptionMode) {
+        setTranscription('');
+        setDetectedLanguage('');
+        setTranscriptionMode(newMode);
+    }
+  };
+
+  const handleSaveNote = async () => {
+    const content = transcription.trim();
+    if (!content) {
+        setNotification({ message: '笔记内容不能为空', type: 'error' });
+        return;
+    }
+    const newNote: NoteItem = {
+        id: Date.now(),
+        content: content,
+        timestamp: Date.now(),
+    };
+    try {
+        await addNoteItem(newNote);
+        setNotes(prev => [newNote, ...prev]);
+        setTranscription(''); // Clear the editor after saving
+        setNotification({ message: '笔记已保存', type: 'success' });
+    } catch (err) {
+        handleError('保存笔记失败。');
+    }
+  };
+
+  const handleDeleteNote = async (id: number) => {
+    try {
+      await deleteNoteItem(id);
+      setNotes(prev => prev.filter(item => item.id !== id));
+      setNotification({ message: '已删除笔记', type: 'success' });
+    } catch(err) {
+      handleError('删除笔记失败。');
+    }
+  };
+
+  const handleRestoreNote = (item: NoteItem) => {
+    setTranscriptionMode('notes');
+    const prefix = transcription.length > 0 && !/[\s\n]$/.test(transcription) ? '\n\n' : '';
+    setTranscription(prev => prev + prefix + item.content);
+    setNotification({ message: '已从笔记恢复内容', type: 'success' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="min-h-screen bg-base-100 text-content-100 font-sans p-3 sm:p-6 lg:p-8">
@@ -495,10 +600,15 @@ export default function App() {
             
             <div className="flex flex-col md:col-start-2 md:row-start-1 md:row-span-2">
                <ResultDisplay
+                ref={resultDisplayRef}
                 transcription={transcription}
+                setTranscription={setTranscription}
                 detectedLanguage={detectedLanguage}
                 isLoading={isLoading}
                 loadingStatus={loadingMessage}
+                transcriptionMode={transcriptionMode}
+                onModeChange={handleModeChange}
+                onSaveNote={handleSaveNote}
               />
                <div className="pt-6">
                  <div className="flex items-stretch gap-3">
@@ -529,14 +639,24 @@ export default function App() {
                     </button>
                   ) : (
                     transcription && audioFile && (
-                      <button
-                        onClick={handleRetry}
-                        title="重试"
-                        aria-label="重试识别"
-                        className="flex-shrink-0 p-3 text-content-100 transition-colors duration-300 rounded-lg shadow-lg bg-base-200 border border-base-300 hover:bg-base-300 focus:outline-none focus:ring-4 focus:ring-brand-primary focus:ring-opacity-50"
-                      >
-                        <RetryIcon className="w-6 h-6" />
-                      </button>
+                      <>
+                        <button
+                          onClick={handleCopy}
+                          title={copied ? "已复制!" : "复制"}
+                          aria-label="复制识别结果"
+                          className="flex-shrink-0 p-3 text-content-100 transition-colors duration-300 rounded-lg shadow-lg bg-base-200 border border-base-300 hover:bg-base-300 focus:outline-none focus:ring-4 focus:ring-brand-primary focus:ring-opacity-50"
+                        >
+                          {copied ? <CheckIcon className="w-6 h-6 text-brand-primary" /> : <CopyIcon className="w-6 h-6" />}
+                        </button>
+                        <button
+                          onClick={handleRetry}
+                          title="重试"
+                          aria-label="重试识别"
+                          className="flex-shrink-0 p-3 text-content-100 transition-colors duration-300 rounded-lg shadow-lg bg-base-200 border border-base-300 hover:bg-base-300 focus:outline-none focus:ring-4 focus:ring-brand-primary focus:ring-opacity-50"
+                        >
+                          <RetryIcon className="w-6 h-6" />
+                        </button>
+                      </>
                     )
                   )}
                  </div>
@@ -559,11 +679,22 @@ export default function App() {
                 items={history}
                 onDelete={handleDeleteHistory}
                 onRestore={handleRestoreHistory}
+                onError={handleError}
                 disabled={isLoading}
               />
             </div>
 
             <div className="md:col-start-1 md:row-start-3">
+               <NotesPanel
+                items={notes}
+                onDelete={handleDeleteNote}
+                onRestore={handleRestoreNote}
+                onError={handleError}
+                disabled={isLoading}
+              />
+            </div>
+            
+            <div className="md:col-span-2">
               <ExampleButtons onLoadExample={handleLoadExample} disabled={isLoading} />
             </div>
           </div>

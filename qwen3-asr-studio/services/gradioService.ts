@@ -1,5 +1,5 @@
 
-import { Client, predict } from "@gradio/client";
+import { Client } from "@gradio/client";
 import type { GradioClient, PredictReturn } from "@gradio/client";
 import { Language } from "../types";
 
@@ -15,6 +15,21 @@ async function getClient() {
 
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 2000;
+const API_URL = 'https://c0rpr74ughd0-deploy.space.z.ai/api/asr-inference';
+
+const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            const result = reader.result as string;
+            // remove "data:*/*;base64," prefix
+            resolve(result.split(',')[1]);
+        };
+        reader.onerror = (error) => reject(error);
+    });
+};
+
 
 export const transcribeAudio = async (
   audioFile: File,
@@ -23,28 +38,53 @@ export const transcribeAudio = async (
   enableItn: boolean,
   onProgress: (message: string) => void
 ): Promise<{ transcription: string; detectedLanguage: string }> => {
-  const app = await getClient();
   
   for (let i = 0; i < MAX_RETRIES; i++) {
     try {
       const attempt = i + 1;
       onProgress(attempt > 1 ? `正在进行第 ${attempt} 次尝试...` : '正在识别，请稍候...');
       
-      const result: PredictReturn = await app.predict('/asr_inference', {
-        audio_file: audioFile,
-        context: context,
-        language: language,
-        enable_itn: enableItn,
+      onProgress('正在准备音频数据...');
+      const base64Data = await fileToBase64(audioFile);
+
+      onProgress('正在发送到 API...');
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          audio_file: {
+            data: base64Data,
+            name: audioFile.name,
+            type: audioFile.type,
+            size: audioFile.size
+          },
+          context: context,
+          language: language,
+          enable_itn: enableItn,
+        }),
       });
 
-      if (result.data && Array.isArray(result.data) && result.data.length >= 2) {
+      if (!response.ok) {
+        throw new Error(`API 请求失败，状态码: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data && Array.isArray(result.data) && result.data.length >= 2) {
         onProgress('识别成功！');
+        const detectedLangStr = result.data[1] as string; // e.g., "检测到的语言：中文"
+        const detectedLanguage = (detectedLangStr.split('：')[1] || detectedLangStr).trim();
+
         return {
           transcription: result.data[0] as string,
-          detectedLanguage: result.data[1] as string,
+          detectedLanguage: detectedLanguage,
         };
+      } else if (result.error) {
+        throw new Error(result.details || result.error);
       } else {
-        throw new Error('Invalid response format from API');
+        throw new Error('来自 API 的响应格式无效');
       }
     } catch (error) {
       if (i === MAX_RETRIES - 1) {

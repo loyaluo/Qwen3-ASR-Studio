@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
 import { StopIcon } from './icons/StopIcon';
@@ -261,7 +262,7 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
     <div className="flex flex-col min-[250px]:flex-row items-stretch w-full gap-4">
       <div className="flex flex-col items-center flex-shrink-0">
         <div className="flex items-baseline gap-3 mb-2">
-            <p className="text-2xl font-mono text-content-100 tracking-wider">
+            <p className="text-xl sm:text-2xl font-mono text-content-100 tracking-wider">
               {formatTime(recordingTime)}
             </p>
         </div>
@@ -269,7 +270,7 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
           onClick={recordingStatus === 'idle' ? handleStartRecording : handleStopRecording}
           disabled={disabled}
           title={recordingStatus === 'idle' ? '按住空格键快捷录音' : '松开空格键快捷停止'}
-          className={`flex-shrink-0 flex items-center justify-center w-full min-[250px]:w-36 h-14 px-4 py-2 font-semibold text-white transition-colors duration-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-200 ${
+          className={`flex-shrink-0 flex items-center justify-center w-full min-[250px]:w-36 h-12 sm:h-14 px-4 py-2 font-semibold text-white transition-colors duration-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-200 ${
             recordingStatus === 'idle' 
               ? 'bg-brand-primary hover:bg-brand-secondary focus:ring-brand-primary' 
               : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
@@ -284,7 +285,7 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
         </button>
       </div>
       <div className="flex flex-col flex-grow text-left">
-        <div className="w-full h-24 bg-base-100 rounded-md overflow-hidden">
+        <div className="w-full h-20 sm:h-24 bg-base-100 rounded-md overflow-hidden">
             <canvas ref={canvasRef} className="w-full h-full" />
         </div>
       </div>

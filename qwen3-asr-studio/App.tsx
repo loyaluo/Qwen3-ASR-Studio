@@ -479,11 +479,11 @@ export default function App() {
 
 
   return (
-    <div className="min-h-screen bg-base-100 text-content-100 font-sans p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-base-100 text-content-100 font-sans p-3 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
         <Header onSettingsClick={() => setIsSettingsOpen(true)} onPipClick={togglePip} />
         <main className="mt-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             
             <div className="md:col-start-1 md:row-start-1">
               <AudioPreview
@@ -505,11 +505,11 @@ export default function App() {
                   <button
                     onClick={handleTranscribe}
                     disabled={(!audioFile && !isRecording) || isLoading}
-                    className="flex-grow flex items-center justify-center px-6 py-3 text-lg font-semibold text-white transition-all duration-300 rounded-lg shadow-lg bg-brand-primary hover:bg-brand-secondary disabled:bg-base-300 disabled:cursor-not-allowed disabled:text-content-200 focus:outline-none focus:ring-4 focus:ring-brand-primary focus:ring-opacity-50"
+                    className="flex-grow flex items-center justify-center px-4 sm:px-6 py-3 text-base sm:text-lg font-semibold text-white transition-all duration-300 rounded-lg shadow-lg bg-brand-primary hover:bg-brand-secondary disabled:bg-base-300 disabled:cursor-not-allowed disabled:text-content-200 focus:outline-none focus:ring-4 focus:ring-brand-primary focus:ring-opacity-50"
                   >
                     {isLoading ? (
                       <>
-                        <LoaderIcon className="w-6 h-6 mr-3" />
+                        <LoaderIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
                         正在识别...
                       </>
                     ) : isRecording ? (

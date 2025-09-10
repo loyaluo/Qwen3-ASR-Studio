@@ -18,7 +18,7 @@ export const Header: React.FC<HeaderProps> = ({ onSettingsClick, onPipClick }) =
           <img
             src="https://modelscope.oss-cn-beijing.aliyuncs.com/resource/00EE8C99-9C05-4236-A6D0-B58FF172D31B.png"
             alt="Qwen3 ASR Studio"
-            className="h-14 sm:h-16 w-auto cursor-pointer"
+            className="h-12 sm:h-16 w-auto cursor-pointer"
           />
         </a>
       </div>

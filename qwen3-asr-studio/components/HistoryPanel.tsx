@@ -39,12 +39,12 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, onDelete, onR
   };
 
   return (
-    <div className="mt-6 p-4 rounded-lg bg-base-200 border border-base-300">
+    <div className="mt-4 md:mt-6 p-4 rounded-lg bg-base-200 border border-base-300">
       <h3 className="text-lg font-semibold text-content-100 mb-4">识别历史</h3>
       {items.length === 0 ? (
         <p className="text-center text-content-200">历史记录为空。</p>
       ) : (
-        <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+        <div className="space-y-3 max-h-80 md:max-h-96 overflow-y-auto pr-2">
           {items.map((item) => (
             <div key={item.id} className="p-3 rounded-md bg-base-100 border border-base-300">
               <p className="text-sm text-content-100 break-words mb-2">

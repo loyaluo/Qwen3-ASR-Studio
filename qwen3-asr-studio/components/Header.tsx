@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PipIcon } from './icons/PipIcon';
+import { KeyboardIcon } from './icons/KeyboardIcon';
 import { SettingsIcon } from './icons/SettingsIcon';
 
 interface HeaderProps {
@@ -37,7 +37,7 @@ export const Header: React.FC<HeaderProps> = ({ onSettingsClick, onPipClick }) =
           aria-label="打开输入法模式"
           className="flex items-center gap-2 p-2 sm:px-3 text-sm font-medium rounded-lg text-content-200 hover:bg-base-200 hover:text-content-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"
         >
-          <PipIcon className="w-5 h-5" />
+          <KeyboardIcon className="w-5 h-5" />
           <span className="hidden sm:inline">输入法模式</span>
         </button>
       </div>

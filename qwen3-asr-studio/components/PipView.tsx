@@ -13,8 +13,6 @@ interface PipViewProps {
     transcription: string;
     detectedLanguage: string;
     audioFile: File;
-    copied: boolean;
-    error?: string;
   }) => void;
   theme: 'light' | 'dark';
   context: string;
@@ -39,24 +37,12 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
             const result = await transcribeAudio(audioFile, context, language, enableItn, () => {}, controller.signal);
             if (result.transcription) {
                 setMessage(result.transcription);
-                try {
-                    await navigator.clipboard.writeText(result.transcription);
-                    onTranscriptionResult({
-                        transcription: result.transcription,
-                        detectedLanguage: result.detectedLanguage,
-                        audioFile,
-                        copied: true,
-                    });
-                } catch (copyError) {
-                    console.error('Failed to copy text from PiP:', copyError);
-                    onTranscriptionResult({
-                        transcription: result.transcription,
-                        detectedLanguage: result.detectedLanguage,
-                        audioFile,
-                        copied: false,
-                        error: '复制失败',
-                    });
-                }
+                // The copy logic is moved to the main window for better browser compatibility.
+                onTranscriptionResult({
+                    transcription: result.transcription,
+                    detectedLanguage: result.detectedLanguage,
+                    audioFile,
+                });
                 setStatus('success');
             } else {
                 setMessage('未能识别到任何内容');

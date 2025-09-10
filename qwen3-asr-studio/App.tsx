@@ -156,16 +156,11 @@ export default function App() {
     localStorage.setItem('enableItn', String(enableItn));
   }, [enableItn]);
 
-  const handleTranscriptionCompleteFromPip = useCallback((text: string) => {
-    if (text) {
-        navigator.clipboard.writeText(text)
-          .then(() => {
-            setNotification({ message: '输入法模式识别结果已复制', type: 'success' });
-          })
-          .catch(err => {
-            console.error('Failed to copy text from PiP:', err);
-            setNotification({ message: '从输入法模式复制失败', type: 'error' });
-          });
+  const handleTranscriptionResultFromPip = useCallback((result: { text: string; copied: boolean; error?: string }) => {
+    if (result.copied) {
+        setNotification({ message: '输入法模式识别结果已复制', type: 'success' });
+    } else if (result.text) {
+        setNotification({ message: `识别成功，但复制失败${result.error ? `: ${result.error}` : ''}`, type: 'error' });
     }
   }, []);
 
@@ -552,7 +547,7 @@ export default function App() {
       />
        {isPipActive && pipContainer && createPortal(
         <PipView
-          onTranscriptionComplete={handleTranscriptionCompleteFromPip}
+          onTranscriptionResult={handleTranscriptionResultFromPip}
           theme={theme}
           context={context}
           language={language}

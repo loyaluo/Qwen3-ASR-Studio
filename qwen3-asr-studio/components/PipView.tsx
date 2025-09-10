@@ -8,14 +8,14 @@ import { CloseIcon } from './icons/CloseIcon';
 import { LoaderIcon } from './icons/LoaderIcon';
 
 interface PipViewProps {
-  onTranscriptionComplete: (text: string) => void;
+  onTranscriptionResult: (result: { text: string; copied: boolean; error?: string }) => void;
   theme: 'light' | 'dark';
   context: string;
   language: Language;
   enableItn: boolean;
 }
 
-export const PipView: React.FC<PipViewProps> = ({ onTranscriptionComplete, theme, context, language, enableItn }) => {
+export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, context, language, enableItn }) => {
     type Status = 'idle' | 'recording' | 'processing' | 'success' | 'error';
     const [status, setStatus] = useState<Status>('idle');
     const [message, setMessage] = useState<string>('点击开始录音');
@@ -32,7 +32,13 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionComplete, theme
             const result = await transcribeAudio(audioFile, context, language, enableItn, () => {}, controller.signal);
             if (result.transcription) {
                 setMessage(result.transcription);
-                onTranscriptionComplete(result.transcription);
+                try {
+                    await navigator.clipboard.writeText(result.transcription);
+                    onTranscriptionResult({ text: result.transcription, copied: true });
+                } catch (copyError) {
+                    console.error('Failed to copy text from PiP:', copyError);
+                    onTranscriptionResult({ text: result.transcription, copied: false, error: '复制失败' });
+                }
                 setStatus('success');
             } else {
                 setMessage('未能识别到任何内容');
@@ -44,7 +50,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionComplete, theme
             setMessage(msg);
             setStatus('error');
         }
-    }, [context, language, enableItn, onTranscriptionComplete]);
+    }, [context, language, enableItn, onTranscriptionResult]);
     
     const stopRecording = useCallback(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {

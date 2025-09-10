@@ -24,14 +24,6 @@ export const Header: React.FC<HeaderProps> = ({ onSettingsClick, onPipClick }) =
       </div>
       <div className="flex-1 flex justify-end items-center gap-2">
         <button
-          onClick={onSettingsClick}
-          title="设置"
-          aria-label="打开设置"
-          className="p-2 rounded-full text-content-200 hover:bg-base-200 hover:text-content-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"
-        >
-          <SettingsIcon className="w-6 h-6" />
-        </button>
-        <button
           onClick={onPipClick}
           title="输入法模式 (画中画)"
           aria-label="打开输入法模式"
@@ -39,6 +31,14 @@ export const Header: React.FC<HeaderProps> = ({ onSettingsClick, onPipClick }) =
         >
           <KeyboardIcon className="w-5 h-5" />
           <span className="hidden sm:inline">输入法模式</span>
+        </button>
+        <button
+          onClick={onSettingsClick}
+          title="设置"
+          aria-label="打开设置"
+          className="p-2 rounded-full text-content-200 hover:bg-base-200 hover:text-content-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"
+        >
+          <SettingsIcon className="w-6 h-6" />
         </button>
       </div>
     </header>

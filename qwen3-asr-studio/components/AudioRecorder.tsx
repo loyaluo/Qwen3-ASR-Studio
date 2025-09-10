@@ -43,16 +43,31 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
     onRecordingChange(recordingStatus === 'recording');
   }, [recordingStatus, onRecordingChange]);
   
-  useEffect(() => {
-    if (recordingStatus === 'recording' && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const parent = canvas.parentElement;
-      if (parent) {
-        canvas.width = parent.clientWidth;
-        canvas.height = parent.clientHeight;
-      }
+  const drawIdleLine = useCallback(() => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    const parent = canvas.parentElement;
+    if (!context || !parent) return;
+
+    if (canvas.width !== parent.clientWidth || canvas.height !== parent.clientHeight) {
+      canvas.width = parent.clientWidth;
+      canvas.height = parent.clientHeight;
     }
-  }, [recordingStatus]);
+    
+    // The parent div has the correct background color, so we just clear the canvas.
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    const computedStyle = getComputedStyle(canvas);
+    const strokeColor = computedStyle.getPropertyValue('--color-brand-primary').trim() || '#10b981';
+
+    context.lineWidth = 2.5;
+    context.strokeStyle = strokeColor;
+    context.beginPath();
+    context.moveTo(0, canvas.height / 2);
+    context.lineTo(canvas.width, canvas.height / 2);
+    context.stroke();
+  }, []);
 
   const cleanupAudio = useCallback(() => {
     if (animationFrameIdRef.current) {
@@ -81,50 +96,56 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
   }, [cleanupAudio]);
 
   useEffect(() => {
-    if (recordingStatus !== 'recording') {
-        return;
-    }
-
-    const animationLoop = () => {
-        if (!analyserRef.current || !canvasRef.current || !dataArrayRef.current) {
-            return;
-        }
-        const analyser = analyserRef.current;
-        const canvas = canvasRef.current;
-        const dataArray = dataArrayRef.current;
-        const context = canvas.getContext('2d');
-        if (!context) return;
-        
-        const computedStyle = getComputedStyle(canvas);
-        const backgroundColor = computedStyle.getPropertyValue('--color-base-100').trim() || '#1f2937';
-        const strokeColor = computedStyle.getPropertyValue('--color-brand-primary').trim() || '#10b981';
-
-        analyser.getByteTimeDomainData(dataArray);
-
-        context.fillStyle = backgroundColor;
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        context.lineWidth = 2.5;
-        context.strokeStyle = strokeColor;
-        context.beginPath();
-        const sliceWidth = (canvas.width * 1.0) / analyser.fftSize;
-        let x = 0;
-        for (let i = 0; i < analyser.fftSize; i++) {
-            const v = dataArray[i] / 128.0;
-            const y = (v * canvas.height) / 2;
-            if (i === 0) {
-                context.moveTo(x, y);
-            } else {
-                context.lineTo(x, y);
+    if (recordingStatus === 'recording') {
+        const animationLoop = () => {
+            if (!analyserRef.current || !canvasRef.current || !dataArrayRef.current) {
+                return;
             }
-            x += sliceWidth;
-        }
-        context.lineTo(canvas.width, canvas.height / 2);
-        context.stroke();
+            const analyser = analyserRef.current;
+            const canvas = canvasRef.current;
+            const dataArray = dataArrayRef.current;
+            const context = canvas.getContext('2d');
+            if (!context) return;
+            
+            const parent = canvas.parentElement;
+            if (parent && (canvas.width !== parent.clientWidth || canvas.height !== parent.clientHeight)) {
+                canvas.width = parent.clientWidth;
+                canvas.height = parent.clientHeight;
+            }
 
+            const computedStyle = getComputedStyle(canvas);
+            const strokeColor = computedStyle.getPropertyValue('--color-brand-primary').trim() || '#10b981';
+
+            analyser.getByteTimeDomainData(dataArray);
+
+            // The parent div has the correct background color, so we just clear the canvas.
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            context.lineWidth = 2.5;
+            context.strokeStyle = strokeColor;
+            context.beginPath();
+            const sliceWidth = (canvas.width * 1.0) / analyser.fftSize;
+            let x = 0;
+            for (let i = 0; i < analyser.fftSize; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = (v * canvas.height) / 2;
+                if (i === 0) {
+                    context.moveTo(x, y);
+                } else {
+                    context.lineTo(x, y);
+                }
+                x += sliceWidth;
+            }
+            context.lineTo(canvas.width, canvas.height / 2);
+            context.stroke();
+
+            animationFrameIdRef.current = requestAnimationFrame(animationLoop);
+        };
+        
         animationFrameIdRef.current = requestAnimationFrame(animationLoop);
-    };
-    
-    animationFrameIdRef.current = requestAnimationFrame(animationLoop);
+    } else {
+        drawIdleLine();
+    }
 
     return () => {
         if (animationFrameIdRef.current) {
@@ -132,7 +153,7 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
             animationFrameIdRef.current = null;
         }
     };
-}, [recordingStatus, theme]); // Depend on theme to re-capture colors if it changes
+}, [recordingStatus, theme, drawIdleLine]);
 
   const startTimer = () => {
     stopTimer();
@@ -238,7 +259,7 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
   }));
 
   return (
-    <div className="flex flex-col sm:flex-row items-stretch w-full gap-4">
+    <div className="flex flex-col min-[400px]:flex-row items-stretch w-full gap-4">
       <div className="flex flex-col items-center flex-shrink-0">
         <div className="flex items-baseline gap-3 mb-2">
             <p className="text-2xl font-mono text-content-100 tracking-wider">
@@ -249,7 +270,7 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
           onClick={recordingStatus === 'idle' ? handleStartRecording : handleStopRecording}
           disabled={disabled}
           title={recordingStatus === 'idle' ? '按住空格键快捷录音' : '松开空格键快捷停止'}
-          className={`flex-shrink-0 flex items-center justify-center w-full sm:w-36 h-14 px-4 py-2 font-semibold text-white transition-colors duration-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-200 ${
+          className={`flex-shrink-0 flex items-center justify-center w-full min-[400px]:w-36 h-14 px-4 py-2 font-semibold text-white transition-colors duration-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-200 ${
             recordingStatus === 'idle' 
               ? 'bg-brand-primary hover:bg-brand-secondary focus:ring-brand-primary' 
               : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
@@ -265,13 +286,7 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
       </div>
       <div className="flex flex-col flex-grow text-left">
         <div className="w-full h-24 bg-base-100 rounded-md overflow-hidden">
-          {recordingStatus === 'recording' ? (
             <canvas ref={canvasRef} className="w-full h-full" />
-          ) : (
-            <div className="flex items-center justify-center h-full text-content-200 text-sm">
-                录音波形将在此处显示
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -484,25 +484,16 @@ export default function App() {
         <Header onSettingsClick={() => setIsSettingsOpen(true)} onPipClick={togglePip} />
         <main className="mt-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-6">
+            
+            <div className="md:col-start-1 md:row-start-1">
               <AudioPreview
                 file={audioFile}
                 onClear={() => handleFileChange(null)}
                 disabled={isLoading}
               />
-              <AudioUploader 
-                ref={audioUploaderRef}
-                onFileChange={handleFileChange}
-                onRecordingChange={setIsRecording}
-                disabled={isLoading}
-                onRecordingError={handleError}
-                theme={theme}
-              />
-              <div className="hidden md:block">
-                <ExampleButtons onLoadExample={handleLoadExample} disabled={isLoading} />
-              </div>
             </div>
-            <div className="flex flex-col">
+            
+            <div className="flex flex-col md:col-start-2 md:row-start-1 md:row-span-2">
                <ResultDisplay
                 transcription={transcription}
                 detectedLanguage={detectedLanguage}
@@ -550,6 +541,20 @@ export default function App() {
                   )}
                  </div>
               </div>
+            </div>
+
+            <div className="md:col-start-1 md:row-start-2">
+              <AudioUploader 
+                ref={audioUploaderRef}
+                onFileChange={handleFileChange}
+                onRecordingChange={setIsRecording}
+                disabled={isLoading}
+                onRecordingError={handleError}
+                theme={theme}
+              />
+            </div>
+
+            <div className="md:col-start-2 md:row-start-3">
               <HistoryPanel
                 items={history}
                 onDelete={handleDeleteHistory}
@@ -557,9 +562,10 @@ export default function App() {
                 disabled={isLoading}
               />
             </div>
-          </div>
-          <div className="md:hidden mt-6">
-            <ExampleButtons onLoadExample={handleLoadExample} disabled={isLoading} />
+
+            <div className="md:col-start-1 md:row-start-3">
+              <ExampleButtons onLoadExample={handleLoadExample} disabled={isLoading} />
+            </div>
           </div>
         </main>
       </div>

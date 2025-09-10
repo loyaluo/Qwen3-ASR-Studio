@@ -1,5 +1,4 @@
-
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { transcribeAudio } from '../services/gradioService';
 import { Language } from '../types';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
@@ -7,6 +6,7 @@ import { CheckIcon } from './icons/CheckIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { LoaderIcon } from './icons/LoaderIcon';
 import { StopIcon } from './icons/StopIcon';
+import { CopyIcon } from './icons/CopyIcon';
 
 interface PipViewProps {
   onTranscriptionResult: (result: {
@@ -21,9 +21,10 @@ interface PipViewProps {
 }
 
 export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, context, language, enableItn }) => {
-    type Status = 'idle' | 'recording' | 'processing' | 'success' | 'error';
+    type Status = 'idle' | 'recording' | 'processing' | 'success' | 'copied' | 'error';
     const [status, setStatus] = useState<Status>('idle');
     const [message, setMessage] = useState<string>('点击开始录音');
+    const transcriptionResultRef = useRef<string>('');
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -32,17 +33,18 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
         setStatus('processing');
         setMessage('正在识别...');
         try {
-            // Signal isn't used here as there's no cancel button, but the service expects it.
             const controller = new AbortController();
             const result = await transcribeAudio(audioFile, context, language, enableItn, () => {}, controller.signal);
+
+            onTranscriptionResult({
+                transcription: result.transcription,
+                detectedLanguage: result.detectedLanguage,
+                audioFile,
+            });
+
             if (result.transcription) {
+                transcriptionResultRef.current = result.transcription;
                 setMessage(result.transcription);
-                // The copy logic is moved to the main window for better browser compatibility.
-                onTranscriptionResult({
-                    transcription: result.transcription,
-                    detectedLanguage: result.detectedLanguage,
-                    audioFile,
-                });
                 setStatus('success');
             } else {
                 setMessage('未能识别到任何内容');
@@ -111,14 +113,28 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
     const handleClick = () => {
         if (status === 'recording') {
             stopRecording();
-        } else if (status === 'idle' || status === 'success' || status === 'error') {
+        } else if (status === 'idle' || status === 'error') {
             startRecording();
+        } else if (status === 'success') {
+            navigator.clipboard.writeText(transcriptionResultRef.current).then(() => {
+                setStatus('copied');
+                setMessage('已复制到剪贴板!');
+                setTimeout(() => {
+                    setStatus('idle');
+                    setMessage('点击开始录音');
+                    transcriptionResultRef.current = '';
+                }, 2000);
+            }).catch(err => {
+                console.error("Copy failed in PiP:", err);
+                setMessage('复制失败，请重试');
+                setStatus('error');
+            });
         }
-        // Do nothing if processing
+        // Do nothing if processing or copied
     };
 
     const getIcon = () => {
-        const iconClass = "w-7 h-7 text-white"; // Text inside colored box should be white for contrast
+        const iconClass = "w-7 h-7 text-white";
         switch (status) {
             case 'idle':
                 return <MicrophoneIcon className={iconClass} />;
@@ -127,6 +143,8 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
             case 'processing':
                 return <LoaderIcon className="text-white w-7 h-7" />;
             case 'success':
+                 return <CopyIcon className={iconClass} />;
+            case 'copied':
                  return <CheckIcon className={iconClass} />;
             case 'error':
                  return <CloseIcon className={iconClass} />;
@@ -140,7 +158,8 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
         switch (status) {
             case 'recording': return `${base} bg-red-600 animate-pulse-custom`;
             case 'error': return `${base} bg-red-600`;
-            case 'success': return `${base} bg-green-600`;
+            case 'success': return `${base} bg-blue-600`;
+            case 'copied': return `${base} bg-green-600`;
             default: return `${base} bg-brand-primary`;
         }
     };
@@ -160,7 +179,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
             <div className={getIconContainerClass()}>
                 {getIcon()}
             </div>
-            <p className={`ml-4 text-2xl font-semibold break-all truncate ${status === 'success' || status === 'error' ? 'text-content-100' : 'text-content-200'}`}>
+            <p className={`ml-4 text-2xl font-semibold break-all truncate ${status === 'idle' || status === 'recording' || status === 'processing' ? 'text-content-200' : 'text-content-100'}`}>
                 {message}
             </p>
         </div>

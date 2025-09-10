@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Header } from './components/Header';
@@ -166,16 +165,8 @@ export default function App() {
     setTranscription(result.transcription);
     setDetectedLanguage(result.detectedLanguage);
 
-    // Handle auto-copy logic here in the main window context
-    if (autoCopy && result.transcription) {
-      try {
-        await navigator.clipboard.writeText(result.transcription);
-        setNotification({ message: '输入法模式识别结果已复制', type: 'success' });
-      } catch (copyError) {
-        console.error("Failed to copy from PiP result:", copyError);
-        setNotification({ message: '识别成功，但自动复制失败', type: 'error' });
-      }
-    }
+    // NOTE: Clipboard copy logic is now handled within PipView.tsx to comply with
+    // browser security policies that require a direct user gesture.
 
     // Add to history
     if (result.transcription) {
@@ -189,17 +180,14 @@ export default function App() {
         audioFile: result.audioFile,
       };
 
-      const saveHistory = async () => {
-        try {
-          await addHistoryItem(newHistoryItem);
-          setHistory(prevHistory => [newHistoryItem, ...prevHistory]);
-        } catch (historyError) {
-          console.error("Failed to save history item from PiP:", historyError);
-        }
-      };
-      saveHistory();
+      try {
+        await addHistoryItem(newHistoryItem);
+        setHistory(prevHistory => [newHistoryItem, ...prevHistory]);
+      } catch (historyError) {
+        console.error("Failed to save history item from PiP:", historyError);
+      }
     }
-  }, [context, autoCopy]);
+  }, [context]);
 
   const closePip = useCallback(() => {
     if (pipWindow) {

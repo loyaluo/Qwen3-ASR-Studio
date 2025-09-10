@@ -23,6 +23,14 @@ export const PipApp: React.FC = () => {
     const audioChunksRef = useRef<Blob[]>([]);
     const timerIntervalRef = useRef<number | null>(null);
 
+    // Refs for audio visualization
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const analyserRef = useRef<AnalyserNode | null>(null);
+    const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+    const animationFrameIdRef = useRef<number | null>(null);
+    const dataArrayRef = useRef<Uint8Array | null>(null);
+
     const handleTranscription = async (audioFile: File) => {
         setStatus('processing');
         setTranscription('');
@@ -44,6 +52,26 @@ export const PipApp: React.FC = () => {
         }
     };
     
+    const cleanupAudio = useCallback(() => {
+        if (animationFrameIdRef.current) {
+          cancelAnimationFrame(animationFrameIdRef.current);
+          animationFrameIdRef.current = null;
+        }
+        sourceRef.current?.disconnect();
+        sourceRef.current = null;
+        analyserRef.current = null;
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+          audioContextRef.current.close().catch(console.error);
+        }
+        audioContextRef.current = null;
+        
+        if (canvasRef.current) {
+            const canvas = canvasRef.current;
+            const context = canvas.getContext('2d');
+            context?.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }, []);
+    
     const stopRecording = useCallback(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
@@ -53,13 +81,26 @@ export const PipApp: React.FC = () => {
             timerIntervalRef.current = null;
         }
         setStatus('processing');
-    }, []);
+        cleanupAudio();
+    }, [cleanupAudio]);
 
     const startRecording = async () => {
         setTranscription('');
         setStatus('recording');
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            // Setup Web Audio API for visualization
+            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            audioContextRef.current = audioContext;
+            const source = audioContext.createMediaStreamSource(stream);
+            sourceRef.current = source;
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048;
+            analyserRef.current = analyser;
+            dataArrayRef.current = new Uint8Array(analyser.fftSize);
+            source.connect(analyser);
+
             const recorder = new MediaRecorder(stream);
             mediaRecorderRef.current = recorder;
             audioChunksRef.current = [];
@@ -99,12 +140,73 @@ export const PipApp: React.FC = () => {
     };
 
     useEffect(() => {
+      return () => cleanupAudio();
+    }, [cleanupAudio]);
+
+    useEffect(() => {
         if (status === 'error') {
             const timer = window.setTimeout(() => {
                 setStatus('idle');
             }, 3000);
             return () => clearTimeout(timer);
         }
+    }, [status]);
+
+    useEffect(() => {
+        if (status !== 'recording' || !canvasRef.current) {
+            return;
+        }
+        
+        const canvas = canvasRef.current;
+        const parent = canvas.parentElement;
+        if (parent) {
+            canvas.width = parent.clientWidth;
+            canvas.height = parent.clientHeight;
+        }
+
+        const animationLoop = () => {
+            if (!analyserRef.current || !canvasRef.current || !dataArrayRef.current) {
+                return;
+            }
+            const analyser = analyserRef.current;
+            const dataArray = dataArrayRef.current;
+            const context = canvas.getContext('2d');
+            if (!context) return;
+            
+            analyser.getByteTimeDomainData(dataArray);
+
+            context.fillStyle = '#1f2937'; // bg-base-100
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.lineWidth = 2.5;
+            context.strokeStyle = '#10b981'; // brand-primary
+            context.beginPath();
+
+            const sliceWidth = canvas.width * 1.0 / analyser.fftSize;
+            let x = 0;
+            for (let i = 0; i < analyser.fftSize; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+                if (i === 0) {
+                    context.moveTo(x, y);
+                } else {
+                    context.lineTo(x, y);
+                }
+                x += sliceWidth;
+            }
+            context.lineTo(canvas.width, canvas.height / 2);
+            context.stroke();
+
+            animationFrameIdRef.current = requestAnimationFrame(animationLoop);
+        };
+        
+        animationFrameIdRef.current = requestAnimationFrame(animationLoop);
+
+        return () => {
+            if (animationFrameIdRef.current) {
+                cancelAnimationFrame(animationFrameIdRef.current);
+                animationFrameIdRef.current = null;
+            }
+        };
     }, [status]);
 
     const getButtonContent = () => {
@@ -127,14 +229,19 @@ export const PipApp: React.FC = () => {
     
     const getResultContent = () => {
         if (status === 'processing') return "正在识别...";
+        if (status === 'recording') return "";
         if (transcription) return transcription;
         return "点击下方按钮开始录音";
     };
 
     return (
         <div className="flex flex-col h-screen w-full bg-base-100 font-sans text-content-100 select-none">
-            <div className="flex-grow p-4 flex items-center justify-center text-center overflow-y-auto">
-                <p className={`text-2xl font-medium transition-colors ${status === 'error' ? 'text-red-400' : 'text-content-100'} ${!transcription && status !== 'processing' ? 'text-content-200' : ''}`}>
+            <div className="relative flex-grow p-4 flex items-center justify-center text-center overflow-y-auto">
+                 <canvas 
+                    ref={canvasRef} 
+                    className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${status === 'recording' ? 'opacity-100' : 'opacity-0'}`}
+                />
+                <p className={`relative z-10 text-2xl font-medium transition-colors ${status === 'error' ? 'text-red-400' : 'text-content-100'} ${!transcription && status !== 'processing' && status !== 'recording' ? 'text-content-200' : ''}`}>
                    {getResultContent()}
                 </p>
             </div>

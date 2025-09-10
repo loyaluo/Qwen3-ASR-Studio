@@ -1,11 +1,7 @@
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { transcribeAudio } from '../services/gradioService';
 import { Language } from '../types';
-import { MicrophoneIcon } from './icons/MicrophoneIcon';
-import { CheckIcon } from './icons/CheckIcon';
-import { CloseIcon } from './icons/CloseIcon';
-import { LoaderIcon } from './icons/LoaderIcon';
 
 interface PipViewProps {
   onTranscriptionResult: (result: { text: string; copied: boolean; error?: string }) => void;
@@ -103,50 +99,33 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
         // Do nothing if processing
     };
 
-    const getIcon = () => {
-        const iconClass = "w-7 h-7 text-white"; // Text inside colored box should be white for contrast
+    const getStatusDotClass = () => {
+        const base = "w-3 h-3 rounded-full flex-shrink-0";
         switch (status) {
-            case 'idle':
-                return <MicrophoneIcon className={iconClass} />;
             case 'recording':
-                return <MicrophoneIcon className={iconClass} />;
+                return `${base} bg-red-500 animate-pulsing-dot`;
             case 'processing':
-                return <LoaderIcon className="text-white w-7 h-7" />;
-            case 'success':
-                 return <CheckIcon className={iconClass} />;
+                 return `${base} bg-blue-500 animate-pulsing-dot`;
             case 'error':
-                 return <CloseIcon className={iconClass} />;
+                return `${base} bg-red-500`;
+            case 'success':
+                return `${base} bg-brand-primary`;
+            case 'idle':
             default:
-                return <MicrophoneIcon className={iconClass} />;
-        }
-    };
-
-    const getIconContainerClass = () => {
-        const base = "p-2 rounded-md transition-colors duration-300 flex-shrink-0";
-        switch (status) {
-            case 'recording': return `${base} bg-brand-primary animate-pulse-custom`;
-            case 'error': return `${base} bg-red-600`;
-            case 'success': return `${base} bg-green-600`;
-            default: return `${base} bg-brand-primary`;
+                return `${base} bg-brand-primary`;
         }
     };
 
     return (
         <div 
-            className="flex items-center h-screen w-full bg-base-100 font-sans text-content-100 select-none cursor-pointer p-4"
+            className="flex items-center h-screen w-full bg-base-100 font-sans text-content-100 select-none cursor-pointer px-4"
             onClick={handleClick}
             role="button"
             tabIndex={0}
             aria-label={message}
         >
-            <style>{`
-                @keyframes pulse-custom { 50% { opacity: .6; } }
-                .animate-pulse-custom { animation: pulse-custom 2s cubic-bezier(0.4, 0.6, 1) infinite; }
-            `}</style>
-            <div className={getIconContainerClass()}>
-                {getIcon()}
-            </div>
-            <p className={`ml-4 text-2xl font-semibold break-all truncate ${status === 'success' || status === 'error' ? 'text-content-100' : 'text-content-200'}`}>
+            <div className={getStatusDotClass()}></div>
+            <p className="ml-3 text-lg font-medium break-all truncate">
                 {message}
             </p>
         </div>

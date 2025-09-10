@@ -100,8 +100,9 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionComplete, theme
     const getIcon = () => {
         const iconClass = "w-7 h-7 text-white"; // Text inside colored box should be white for contrast
         switch (status) {
-            case 'recording':
             case 'idle':
+                return <MicrophoneIcon className={iconClass} />;
+            case 'recording':
                 return <MicrophoneIcon className={iconClass} />;
             case 'processing':
                 return <LoaderIcon className="text-white w-7 h-7" />;
@@ -134,7 +135,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionComplete, theme
         >
             <style>{`
                 @keyframes pulse-custom { 50% { opacity: .6; } }
-                .animate-pulse-custom { animation: pulse-custom 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+                .animate-pulse-custom { animation: pulse-custom 2s cubic-bezier(0.4, 0.6, 1) infinite; }
             `}</style>
             <div className={getIconContainerClass()}>
                 {getIcon()}

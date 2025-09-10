@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
 import { StopIcon } from './icons/StopIcon';
@@ -223,6 +224,7 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
       <button
         onClick={recordingStatus === 'idle' ? handleStartRecording : handleStopRecording}
         disabled={disabled}
+        title={recordingStatus === 'idle' ? '按住空格键快捷录音' : '松开空格键快捷停止'}
         className={`flex items-center justify-center w-36 h-14 px-4 py-2 font-semibold text-white transition-colors duration-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-200 ${
           recordingStatus === 'idle' 
             ? 'bg-brand-primary hover:bg-brand-secondary focus:ring-brand-primary' 

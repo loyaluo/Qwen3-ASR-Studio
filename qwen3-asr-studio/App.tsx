@@ -300,18 +300,6 @@ export default function App() {
     }
   }, []);
 
-  const handleRestoreHistory = (id: number) => {
-    const item = history.find(h => h.id === id);
-    if (item) {
-        setAudioFile(item.audioFile);
-        setContext(item.context);
-        setTranscription(item.transcription);
-        setDetectedLanguage(item.detectedLanguage);
-        setNotification({ message: '已从历史记录恢复', type: 'success' });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
   const handleDeleteHistory = async (id: number) => {
     try {
       await deleteHistoryItem(id);
@@ -396,7 +384,6 @@ export default function App() {
               </div>
               <HistoryPanel
                 items={history}
-                onRestore={handleRestoreHistory}
                 onDelete={handleDeleteHistory}
                 disabled={isLoading}
               />

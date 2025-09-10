@@ -1,12 +1,10 @@
 import React from 'react';
 import type { HistoryItem } from '../types';
-import { RestoreIcon } from './icons/RestoreIcon';
 import { DeleteIcon } from './icons/DeleteIcon';
 import { LanguageIcon } from './icons/LanguageIcon';
 
 interface HistoryPanelProps {
   items: HistoryItem[];
-  onRestore: (id: number) => void;
   onDelete: (id: number) => void;
   disabled?: boolean;
 }
@@ -22,7 +20,7 @@ const formatTimestamp = (timestamp: number) => {
   });
 };
 
-export const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, onRestore, onDelete, disabled }) => {
+export const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, onDelete, disabled }) => {
   return (
     <div className="mt-6 p-4 rounded-lg bg-base-200 border border-base-300">
       <h3 className="text-lg font-semibold text-content-100 mb-4">识别历史</h3>
@@ -48,14 +46,6 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, onRestore, on
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                  <button
-                    onClick={() => onRestore(item.id)}
-                    disabled={disabled}
-                    title="恢复"
-                    className="p-1 rounded-full hover:bg-base-300 disabled:opacity-50"
-                  >
-                    <RestoreIcon className="w-4 h-4" />
-                  </button>
                   <button
                     onClick={() => onDelete(item.id)}
                     disabled={disabled}

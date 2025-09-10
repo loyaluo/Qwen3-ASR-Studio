@@ -619,7 +619,7 @@ export default function App() {
                   >
                     {isLoading ? (
                       <>
-                        <LoaderIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
+                        <LoaderIcon color="white" className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
                         正在识别...
                       </>
                     ) : isRecording ? (

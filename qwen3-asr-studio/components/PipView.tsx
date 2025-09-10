@@ -131,7 +131,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
             case 'recording':
                 return <StopIcon className={iconClass} />;
             case 'processing':
-                return <LoaderIcon className="text-white w-7 h-7" />;
+                return <LoaderIcon color="white" className="w-7 h-7" />;
             case 'success':
                  return <CheckIcon className={iconClass} />;
             case 'error':

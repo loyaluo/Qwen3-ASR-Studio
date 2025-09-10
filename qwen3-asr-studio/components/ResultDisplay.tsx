@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { LanguageIcon } from './icons/LanguageIcon';
 import { LoaderIcon } from './icons/LoaderIcon';
@@ -122,7 +123,7 @@ export const ResultDisplay = forwardRef<ResultDisplayHandle, ResultDisplayProps>
         <div className="relative p-4 rounded-b-lg bg-base-100 flex-grow overflow-y-auto h-32 md:h-auto">
           {isLoading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center h-full text-center bg-base-100 bg-opacity-90 z-10">
-              <LoaderIcon className="h-10 text-brand-primary" />
+              <LoaderIcon color="#10b981" className="h-10" />
             </div>
           )}
 

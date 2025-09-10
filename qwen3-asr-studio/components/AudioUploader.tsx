@@ -109,8 +109,6 @@ export const AudioUploader = forwardRef<AudioUploaderHandle, AudioUploaderProps>
         const context = canvas.getContext('2d');
         if (!context) return;
         
-        analyser.getByteTimeDomainData(dataArray);
-        
         context.fillStyle = '#1f2937'; // bg-base-100
         context.fillRect(0, 0, canvas.width, canvas.height);
         context.lineWidth = 2;
@@ -277,51 +275,49 @@ export const AudioUploader = forwardRef<AudioUploaderHandle, AudioUploaderProps>
   const idleClasses = "border-base-300 hover:border-brand-primary hover:bg-base-200";
   const draggingClasses = "border-brand-primary bg-base-200 ring-4 ring-brand-primary ring-opacity-30";
   
-  if (file && audioSrc) {
-    return (
-      <div className="p-4 space-y-3 rounded-lg bg-base-200 border border-base-300">
-        <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-                <AudioWaveIcon className="w-6 h-6 text-brand-primary flex-shrink-0" />
-                <p className="text-sm font-medium text-content-100 truncate" title={file.name}>{file.name}</p>
-            </div>
-            <button onClick={onClearFile} disabled={disabled} className="p-1 rounded-full text-content-200 hover:bg-base-300 hover:text-content-100 disabled:opacity-50">
-                <CloseIcon className="w-5 h-5" />
-            </button>
-        </div>
-        <audio controls src={audioSrc} className="w-full h-10" />
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="p-4 rounded-lg bg-base-200 border border-base-300">
         <h3 className="text-sm font-medium text-content-200 mb-3">上传文件</h3>
-        <div
-          className={`${baseClasses} ${disabled ? disabledClasses : isDragging ? draggingClasses : idleClasses}`}
-          onDragEnter={onDragEnter}
-          onDragLeave={onDragLeave}
-          onDragOver={onDragOver}
-          onDrop={onDrop}
-          onClick={onButtonClick}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept="audio/*"
-            className="hidden"
-            onChange={(e) => handleFileSelect(e.target.files?.[0])}
-            disabled={disabled}
-          />
-          <div className="flex flex-col items-center justify-center text-center">
-            <UploadIcon className="w-12 h-12 mb-3 text-content-200" />
-            <p className="font-semibold text-content-100">
-              点击上传或拖拽文件
-            </p>
-            <p className="text-sm text-content-200">支持 WAV, MP3, FLAC 等格式</p>
+        {file && audioSrc ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                    <AudioWaveIcon className="w-6 h-6 text-brand-primary flex-shrink-0" />
+                    <p className="text-sm font-medium text-content-100 truncate" title={file.name}>{file.name}</p>
+                </div>
+                <button onClick={onClearFile} disabled={disabled} className="p-1 rounded-full text-content-200 hover:bg-base-300 hover:text-content-100 disabled:opacity-50">
+                    <CloseIcon className="w-5 h-5" />
+                </button>
+            </div>
+            <audio controls src={audioSrc} className="w-full h-10" />
           </div>
-        </div>
+        ) : (
+          <div
+            className={`${baseClasses} ${disabled ? disabledClasses : isDragging ? draggingClasses : idleClasses}`}
+            onDragEnter={onDragEnter}
+            onDragLeave={onDragLeave}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            onClick={onButtonClick}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              accept="audio/*"
+              className="hidden"
+              onChange={(e) => handleFileSelect(e.target.files?.[0])}
+              disabled={disabled}
+            />
+            <div className="flex flex-col items-center justify-center text-center">
+              <UploadIcon className="w-12 h-12 mb-3 text-content-200" />
+              <p className="font-semibold text-content-100">
+                点击上传或拖拽文件
+              </p>
+              <p className="text-sm text-content-200">支持 WAV, MP3, FLAC 等格式</p>
+            </div>
+          </div>
+        )}
       </div>
       <div className="p-4 rounded-lg bg-base-200 border border-base-300">
         <h3 className="text-sm font-medium text-content-200 mb-3">或录制音频</h3>

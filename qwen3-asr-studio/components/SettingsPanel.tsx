@@ -1,6 +1,6 @@
 import React from 'react';
 import { CloseIcon } from './icons/CloseIcon';
-import { Language } from '../types';
+import { Language, CompressionLevel } from '../types';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -15,6 +15,8 @@ interface SettingsPanelProps {
   setLanguage: (language: Language) => void;
   enableItn: boolean;
   setEnableItn: (enable: boolean) => void;
+  compressionLevel: CompressionLevel;
+  setCompressionLevel: (level: CompressionLevel) => void;
   disabled?: boolean;
 }
 
@@ -49,6 +51,12 @@ const languageDisplayNames: Record<Language, string> = {
   [Language.SPANISH]: "西班牙语 (es)",
 };
 
+const compressionLevelDisplayNames: Record<CompressionLevel, string> = {
+  [CompressionLevel.ORIGINAL]: "原始",
+  [CompressionLevel.MEDIUM]: "中等",
+  [CompressionLevel.MINIMUM]: "最小",
+};
+
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   isOpen,
   onClose,
@@ -62,6 +70,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setLanguage,
   enableItn,
   setEnableItn,
+  compressionLevel,
+  setCompressionLevel,
   disabled,
 }) => {
   if (!isOpen) return null;
@@ -170,6 +180,30 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   disabled={disabled}
                 />
               </div>
+
+              <div className="flex items-center justify-between">
+                <label className="text-base font-medium">
+                  音频压缩
+                  <p className="text-sm text-content-200 font-normal">减小文件大小以加快上传速度。</p>
+                </label>
+                <div className="flex items-center gap-1 p-1 rounded-lg bg-base-100 border border-base-300">
+                    {Object.values(CompressionLevel).map((level) => (
+                      <button
+                        key={level}
+                        onClick={() => setCompressionLevel(level)}
+                        disabled={disabled}
+                        className={`px-2 py-1 text-sm font-medium rounded-md transition-colors ${
+                          compressionLevel === level
+                            ? 'bg-brand-primary text-white'
+                            : 'hover:bg-base-300'
+                        }`}
+                      >
+                        {compressionLevelDisplayNames[level]}
+                      </button>
+                    ))}
+                </div>
+              </div>
+
             </div>
           </div>
         </div>

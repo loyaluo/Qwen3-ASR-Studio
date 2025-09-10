@@ -1,4 +1,3 @@
-
 export enum Language {
   AUTO = "auto",
   ENGLISH = "en",
@@ -8,4 +7,10 @@ export enum Language {
   FRENCH = "fr",
   GERMAN = "de",
   SPANISH = "es",
+}
+
+export enum CompressionLevel {
+  ORIGINAL = 'original',
+  MEDIUM = 'medium',
+  MINIMUM = 'minimum',
 }

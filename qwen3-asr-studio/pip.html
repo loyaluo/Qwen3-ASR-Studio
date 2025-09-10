@@ -29,22 +29,10 @@
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
     "react/": "https://aistudiocdn.com/react@^19.1.1/",
     "react": "https://aistudiocdn.com/react@^19.1.1",
-    "@gradio/client": "https://aistudiocdn.com/@gradio/client@^1.17.1"
+    "@gradio/client": "https://cdn.jsdelivr.net/npm/@gradio/client@1.17.1/+esm"
   }
 }
 </script>
-    <script type="module">
-      // Polyfill for Buffer needed by @gradio/client
-      (async () => {
-        if (typeof window.global === 'undefined') {
-          window.global = window;
-        }
-        if (typeof window.Buffer === 'undefined') {
-          const buffer = await import('https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js');
-          window.Buffer = buffer.Buffer;
-        }
-      })();
-    </script>
   </head>
   <body class="bg-base-100">
     <div id="root"></div>

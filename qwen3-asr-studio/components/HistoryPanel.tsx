@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { HistoryItem } from '../types';
 import { DeleteIcon } from './icons/DeleteIcon';
 import { LanguageIcon } from './icons/LanguageIcon';
+import { CopyIcon } from './icons/CopyIcon';
+import { CheckIcon } from './icons/CheckIcon';
 
 interface HistoryPanelProps {
   items: HistoryItem[];
@@ -21,6 +23,18 @@ const formatTimestamp = (timestamp: number) => {
 };
 
 export const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, onDelete, disabled }) => {
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+
+  const handleCopy = (item: HistoryItem) => {
+    if (!item.transcription) return;
+    navigator.clipboard.writeText(item.transcription);
+    setCopiedId(item.id);
+    const timer = setTimeout(() => {
+        setCopiedId(currentId => (currentId === item.id ? null : currentId));
+    }, 2000);
+    return () => clearTimeout(timer);
+  };
+
   return (
     <div className="mt-6 p-4 rounded-lg bg-base-200 border border-base-300">
       <h3 className="text-lg font-semibold text-content-100 mb-4">识别历史</h3>
@@ -47,9 +61,27 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, onDelete, dis
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                   <button
+                    onClick={() => handleCopy(item)}
+                    disabled={disabled || !item.transcription}
+                    title={copiedId === item.id ? "已复制" : "复制"}
+                    aria-label="复制识别结果"
+                    className={`p-1 rounded-full transition-colors duration-200 disabled:opacity-50 ${
+                      copiedId === item.id
+                        ? 'text-brand-primary'
+                        : 'text-content-200 hover:bg-base-300/50 hover:text-content-100'
+                    }`}
+                  >
+                    {copiedId === item.id ? (
+                      <CheckIcon className="w-4 h-4" />
+                    ) : (
+                      <CopyIcon className="w-4 h-4" />
+                    )}
+                  </button>
+                  <button
                     onClick={() => onDelete(item.id)}
                     disabled={disabled}
                     title="删除"
+                    aria-label="删除此条历史记录"
                     className="p-1 rounded-full text-red-500 hover:bg-red-500/10 disabled:opacity-50"
                   >
                     <DeleteIcon className="w-4 h-4" />

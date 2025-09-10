@@ -52,7 +52,7 @@ export const Header: React.FC<{ onSettingsClick: () => void }> = ({ onSettingsCl
           />
         </a>
       </div>
-      <div className="flex-1 flex justify-end gap-2">
+      <div className="flex-1 flex justify-end items-center gap-2">
         <button
           onClick={onSettingsClick}
           title="设置"
@@ -65,9 +65,10 @@ export const Header: React.FC<{ onSettingsClick: () => void }> = ({ onSettingsCl
           onClick={handlePipClick}
           title="输入法模式 (画中画)"
           aria-label="打开输入法模式"
-          className="p-2 rounded-full text-content-200 hover:bg-base-200 hover:text-content-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-content-200 hover:bg-base-200 hover:text-content-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"
         >
-          <PipIcon className="w-6 h-6" />
+          <PipIcon className="w-5 h-5" />
+          输入法模式
         </button>
       </div>
     </header>

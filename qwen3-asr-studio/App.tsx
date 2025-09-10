@@ -105,6 +105,30 @@ export default function App() {
     localStorage.setItem('enableItn', String(enableItn));
   }, [enableItn]);
 
+  useEffect(() => {
+    const channel = new BroadcastChannel('qwen3-asr-pip');
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'copy' && typeof event.data.text === 'string') {
+        navigator.clipboard.writeText(event.data.text)
+          .then(() => {
+            setNotification({ message: '输入法模式识别结果已复制', type: 'success' });
+          })
+          .catch(err => {
+            console.error('Failed to copy text from PiP:', err);
+            setNotification({ message: '从输入法模式复制失败', type: 'error' });
+          });
+      }
+    };
+
+    channel.addEventListener('message', handleMessage);
+
+    return () => {
+      channel.removeEventListener('message', handleMessage);
+      channel.close();
+    };
+  }, []);
+
 
   const handleFileChange = (file: File | null) => {
     setAudioFile(file);

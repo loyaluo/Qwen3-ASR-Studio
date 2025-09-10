@@ -4,36 +4,33 @@ import { Language } from './types';
 import { MicrophoneIcon } from './components/icons/MicrophoneIcon';
 import { StopIcon } from './components/icons/StopIcon';
 import { LoaderIcon } from './components/icons/LoaderIcon';
-import { CheckIcon } from './components/icons/CheckIcon';
-import { CameraIcon } from './components/icons/CameraIcon';
 
-type RecordingStatus = 'idle' | 'recording' | 'processing' | 'copied' | 'error';
-type ScreenshotStatus = 'idle' | 'capturing' | 'copied' | 'error';
+const channel = new BroadcastChannel('qwen3-asr-pip');
 
 export const PipApp: React.FC = () => {
-    const [recordingStatus, setRecordingStatus] = useState<RecordingStatus>('idle');
-    const [screenshotStatus, setScreenshotStatus] = useState<ScreenshotStatus>('idle');
-    const [errorMessage, setErrorMessage] = useState('');
-    
+    type Status = 'idle' | 'recording' | 'processing' | 'error';
+    const [status, setStatus] = useState<Status>('idle');
+    const [transcription, setTranscription] = useState<string>('');
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
 
     const handleTranscription = async (audioFile: File) => {
-        setRecordingStatus('processing');
+        setStatus('processing');
         try {
-            const result = await transcribeAudio(audioFile, '', Language.AUTO, true);
+            const result = await transcribeAudio(audioFile, '', Language.AUTO, true, () => {});
             if (result.transcription) {
-                await navigator.clipboard.writeText(result.transcription);
-                setRecordingStatus('copied');
+                setTranscription(result.transcription);
+                channel.postMessage({ type: 'copy', text: result.transcription });
+                setStatus('idle');
             } else {
-                setErrorMessage('未能识别到任何内容。');
-                setRecordingStatus('error');
+                setTranscription('未能识别到任何内容。');
+                setStatus('error');
             }
         } catch (err) {
             console.error('Transcription error:', err);
             const msg = err instanceof Error ? err.message : '转录过程中发生未知错误。';
-            setErrorMessage(msg);
-            setRecordingStatus('error');
+            setTranscription(msg);
+            setStatus('error');
         }
     };
 
@@ -44,10 +41,10 @@ export const PipApp: React.FC = () => {
     }, []);
 
     const startRecording = async () => {
-        setErrorMessage('');
+        setTranscription('');
+        setStatus('recording'); // Optimistically set to recording
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            setRecordingStatus('recording');
             const recorder = new MediaRecorder(stream);
             mediaRecorderRef.current = recorder;
             audioChunksRef.current = [];
@@ -65,128 +62,79 @@ export const PipApp: React.FC = () => {
             recorder.start();
         } catch (err) {
             console.error("Error accessing microphone:", err);
-            setErrorMessage("麦克风访问被拒绝或不可用。");
-            setRecordingStatus('error');
+            setTranscription("麦克风访问被拒绝或不可用。");
+            setStatus('error');
         }
     };
     
     const handleRecordClick = () => {
-        if (recordingStatus === 'recording') {
+        if (status === 'recording') {
             stopRecording();
-        } else {
+        } else if (status === 'idle' || status === 'error') {
             startRecording();
         }
     };
-    
-    const handleScreenshot = async () => {
-        setScreenshotStatus('capturing');
-        setErrorMessage('');
-        try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-            const videoTrack = stream.getVideoTracks()[0];
-            const video = document.createElement('video');
 
-            await new Promise<void>((resolve, reject) => {
-                video.onloadedmetadata = () => {
-                    video.play().then(() => resolve()).catch(reject);
-                };
-                video.srcObject = stream;
-            });
-
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            videoTrack.stop();
-            
-            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-            if (blob) {
-                await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]);
-                setScreenshotStatus('copied');
-            } else {
-                throw new Error('Canvas toBlob failed');
-            }
-        } catch (err) {
-            console.error("Screenshot error:", err);
-            if (err.name !== 'NotAllowedError') {
-                setErrorMessage("截图失败。");
-                setScreenshotStatus('error');
-            } else {
-                setScreenshotStatus('idle');
-            }
-        }
-    };
-
+    // Auto-reset from error state after a delay
     useEffect(() => {
-        if (recordingStatus === 'copied' || recordingStatus === 'error') {
+        if (status === 'error') {
             const timer = window.setTimeout(() => {
-                setRecordingStatus('idle');
-            }, 2000);
+                setStatus('idle');
+            }, 3000);
             return () => clearTimeout(timer);
         }
-    }, [recordingStatus]);
+    }, [status]);
 
-    useEffect(() => {
-        if (screenshotStatus === 'copied' || screenshotStatus === 'error') {
-            const timer = window.setTimeout(() => {
-                setScreenshotStatus('idle');
-            }, 2000);
-            return () => clearTimeout(timer);
-        }
-    }, [screenshotStatus]);
-    
-    useEffect(() => {
-        if (recordingStatus === 'idle' && screenshotStatus === 'idle') {
-            setErrorMessage('');
-        }
-    }, [recordingStatus, screenshotStatus]);
-
-    const getRecordingContent = () => {
-        switch (recordingStatus) {
-            case 'idle': return <><MicrophoneIcon className="w-12 h-12" /><span className="mt-2 text-lg">录音</span></>;
-            case 'recording': return <><StopIcon className="w-12 h-12" /><span className="mt-2 text-lg animate-pulse">停止</span></>;
-            case 'processing': return <><LoaderIcon className="w-12 h-12" /><span className="mt-2 text-lg">识别中</span></>;
-            case 'copied': return <><CheckIcon className="w-12 h-12 text-brand-primary" /><span className="mt-2 text-lg text-brand-primary">已复制</span></>;
-            case 'error': return <><MicrophoneIcon className="w-12 h-12 text-red-500" /><span className="mt-2 text-lg text-red-500">错误</span></>;
+    const getButtonContent = () => {
+        switch (status) {
+            case 'recording': return <StopIcon className="w-8 h-8" />;
+            case 'processing': return <LoaderIcon className="w-8 h-8" />;
+            default: return <MicrophoneIcon className="w-8 h-8" />;
         }
     };
-    
-    const getScreenshotContent = () => {
-        switch (screenshotStatus) {
-            case 'idle': return <><CameraIcon className="w-12 h-12" /><span className="mt-2 text-lg">截图</span></>;
-            case 'capturing': return <><LoaderIcon className="w-12 h-12" /><span className="mt-2 text-lg">截图中</span></>;
-            case 'copied': return <><CheckIcon className="w-12 h-12 text-brand-primary" /><span className="mt-2 text-lg text-brand-primary">已复制</span></>;
-            case 'error': return <><CameraIcon className="w-12 h-12 text-red-500" /><span className="mt-2 text-lg text-red-500">错误</span></>;
+
+    const getButtonClasses = () => {
+        const base = "flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-white transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-opacity-50 disabled:opacity-70 disabled:cursor-wait";
+        switch (status) {
+            case 'recording': return `${base} bg-red-600 hover:bg-red-700 focus:ring-red-500`;
+            case 'processing': return `${base} bg-base-300`;
+            case 'error': return `${base} bg-red-600 focus:ring-red-500`;
+            default: return `${base} bg-brand-primary hover:bg-brand-secondary focus:ring-brand-primary`;
         }
     };
-    
-    const canClickRecord = screenshotStatus === 'idle';
-    const canClickScreenshot = recordingStatus === 'idle';
+
+    const getResultClasses = () => {
+        const base = "flex-grow h-full flex items-center p-4 rounded-lg bg-base-200 border";
+        switch (status) {
+            case 'error': return `${base} border-red-500 text-red-400`;
+            default: return `${base} border-base-300 text-content-100`;
+        }
+    };
+
+    const getResultContent = () => {
+        if (status === 'processing') {
+            return "正在识别...";
+        }
+        if (transcription) {
+            return transcription;
+        }
+        return "点击左侧按钮开始录音";
+    };
 
     return (
-        <div className="flex flex-col h-screen bg-base-100 text-content-100 font-sans p-2 select-none">
-            <div 
-                onClick={canClickRecord ? handleRecordClick : undefined}
-                className={`flex-1 flex flex-col items-center justify-center m-1 rounded-lg transition-all duration-200 border
-                    ${recordingStatus === 'recording' ? 'bg-red-600/20 border-red-500' : 'bg-base-200 border-base-300'}
-                    ${!canClickRecord ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-base-300'}
-                `}
-                aria-disabled={!canClickRecord}
+        <div className="flex h-screen w-full items-center p-3 gap-3 bg-base-100 font-sans select-none">
+            <button
+                onClick={handleRecordClick}
+                disabled={status === 'processing'}
+                className={getButtonClasses()}
+                aria-label={status === 'recording' ? '停止录音' : '开始录音'}
             >
-                {getRecordingContent()}
-            </div>
-            <div 
-                onClick={canClickScreenshot ? handleScreenshot : undefined}
-                className={`flex-1 flex flex-col items-center justify-center m-1 rounded-lg transition-all duration-200 border bg-base-200 border-base-300
-                    ${!canClickScreenshot ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-base-300'}
-                `}
-                 aria-disabled={!canClickScreenshot}
-            >
-                {getScreenshotContent()}
-            </div>
-             <div className="h-6 text-center text-sm p-1 text-red-500 truncate" title={errorMessage}>
-                {(recordingStatus === 'error' || screenshotStatus === 'error') && errorMessage}
+                {getButtonContent()}
+            </button>
+            <div className={getResultClasses()}>
+                <p className="text-lg w-full overflow-hidden whitespace-nowrap text-ellipsis" title={transcription}>
+                   {getResultContent()}
+                </p>
             </div>
         </div>
     );

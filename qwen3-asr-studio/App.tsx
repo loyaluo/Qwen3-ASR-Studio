@@ -34,7 +34,7 @@ declare global {
 
 export default function App() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [context, setContext] = useState<string>(() => localStorage.getItem('context') || '');
+  const [context, setContext] = useState<string>(() => localStorage.getItem('context') || '转录中文时，请用简体。');
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') as Language | null) || Language.AUTO);
   const [enableItn, setEnableItn] = useState<boolean>(() => localStorage.getItem('enableItn') === 'true');
   const [transcription, setTranscription] = useState<string>('');
@@ -432,6 +432,19 @@ export default function App() {
     }
   };
 
+  const handleRestoreHistory = (item: HistoryItem) => {
+    if (item.audioFile) {
+      setAudioFile(item.audioFile);
+      setTranscription(item.transcription);
+      setDetectedLanguage(item.detectedLanguage);
+      setContext(item.context);
+      setNotification({ message: '已从历史记录恢复', type: 'success' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      handleError('无法恢复音频文件，可能已丢失。');
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-base-100 text-content-100 font-sans p-4 sm:p-6 lg:p-8">
@@ -508,6 +521,7 @@ export default function App() {
               <HistoryPanel
                 items={history}
                 onDelete={handleDeleteHistory}
+                onRestore={handleRestoreHistory}
                 disabled={isLoading}
               />
             </div>

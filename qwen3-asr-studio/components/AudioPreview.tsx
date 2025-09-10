@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AudioWaveIcon } from './icons/AudioWaveIcon';
+import { SoundWaveIcon } from './icons/SoundWaveIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { DownloadIcon } from './icons/DownloadIcon';
 
@@ -55,7 +55,7 @@ export const AudioPreview: React.FC<AudioPreviewProps> = ({ file, onClear, disab
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
-              <AudioWaveIcon className="w-6 h-6 text-brand-primary flex-shrink-0" />
+              <SoundWaveIcon className="w-6 h-6 text-brand-primary flex-shrink-0" />
               <div className="flex items-baseline gap-2 min-w-0">
                 <p className="text-sm font-medium text-content-100 truncate" title={file.name}>{file.name}</p>
                 <span className="text-xs text-content-200 flex-shrink-0">{formatFileSize(file.size)}</span>

@@ -1,13 +1,16 @@
+
 import React, { useState } from 'react';
 import type { HistoryItem } from '../types';
 import { DeleteIcon } from './icons/DeleteIcon';
 import { LanguageIcon } from './icons/LanguageIcon';
 import { CopyIcon } from './icons/CopyIcon';
 import { CheckIcon } from './icons/CheckIcon';
+import { RestoreIcon } from './icons/RestoreIcon';
 
 interface HistoryPanelProps {
   items: HistoryItem[];
   onDelete: (id: number) => void;
+  onRestore: (item: HistoryItem) => void;
   disabled?: boolean;
 }
 
@@ -22,7 +25,7 @@ const formatTimestamp = (timestamp: number) => {
   });
 };
 
-export const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, onDelete, disabled }) => {
+export const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, onDelete, onRestore, disabled }) => {
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const handleCopy = (item: HistoryItem) => {
@@ -60,6 +63,15 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, onDelete, dis
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                  <button
+                    onClick={() => onRestore(item)}
+                    disabled={disabled}
+                    title="恢复"
+                    aria-label="恢复此条历史记录"
+                    className="p-1 rounded-full text-content-200 hover:bg-base-300/50 hover:text-content-100 disabled:opacity-50"
+                  >
+                    <RestoreIcon className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={() => handleCopy(item)}
                     disabled={disabled || !item.transcription}

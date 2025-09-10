@@ -56,7 +56,13 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionComplete, theme
         setMessage('正在聆听...');
         setStatus('recording');
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                }
+            });
             const recorder = new MediaRecorder(stream);
             mediaRecorderRef.current = recorder;
             audioChunksRef.current = [];

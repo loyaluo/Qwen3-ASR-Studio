@@ -1,15 +1,19 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Header } from './components/Header';
 import { AudioUploader, type AudioUploaderHandle } from './components/AudioUploader';
 import { ResultDisplay } from './components/ResultDisplay';
 import { ExampleButtons } from './components/ExampleButtons';
 import { transcribeAudio, loadExample } from './services/gradioService';
-import { Language, CompressionLevel } from './types';
+import { Language, CompressionLevel, HistoryItem } from './types';
 import { Toast } from './components/Toast';
 import { LoaderIcon } from './components/icons/LoaderIcon';
 import { SettingsPanel } from './components/SettingsPanel';
 import { compressAudio } from './services/audioService';
-import { getFileHash, getCachedTranscription, setCachedTranscription, getCachedRecording, clearCachedRecording } from './services/cacheService';
+import { getFileHash, getCachedTranscription, setCachedTranscription, getCachedRecording, clearCachedRecording, addHistoryItem, getHistory, deleteHistoryItem, clearHistory } from './services/cacheService';
+import { AudioPreview } from './components/AudioPreview';
+import { HistoryPanel } from './components/HistoryPanel';
+import { RetryIcon } from './components/icons/RetryIcon';
 
 type Notification = {
   message: string;
@@ -20,14 +24,17 @@ export default function App() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [context, setContext] = useState<string>(() => localStorage.getItem('context') || '');
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') as Language | null) || Language.AUTO);
-  const [enableItn, setEnableItn] = useState<boolean>(() => localStorage.getItem('enableItn') !== 'false');
+  const [enableItn, setEnableItn] = useState<boolean>(() => localStorage.getItem('enableItn') === 'true');
   const [transcription, setTranscription] = useState<string>('');
   const [detectedLanguage, setDetectedLanguage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>('');
   const [notification, setNotification] = useState<Notification | null>(null);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [transcribeAfterRecording, setTranscribeAfterRecording] = useState<boolean>(false);
   const audioUploaderRef = useRef<AudioUploaderHandle>(null);
+  const isSpaceDown = useRef(false);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
 
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -46,10 +53,10 @@ export default function App() {
     const savedLevel = localStorage.getItem('compressionLevel') as CompressionLevel;
     return savedLevel && Object.values(CompressionLevel).includes(savedLevel)
       ? savedLevel
-      : CompressionLevel.MINIMUM; // Default to minimum
+      : CompressionLevel.ORIGINAL; // Default to original
   });
 
-  // Load cached recording on mount
+  // Load cached recording and history on mount
   useEffect(() => {
     const loadInitialData = async () => {
       try {
@@ -57,8 +64,10 @@ export default function App() {
         if (cachedRecording) {
           setAudioFile(cachedRecording);
         }
+        const historyItems = await getHistory();
+        setHistory(historyItems);
       } catch (error) {
-        console.error("Failed to load cached recording:", error);
+        console.error("Failed to load initial data:", error);
       }
     };
     loadInitialData();
@@ -104,6 +113,7 @@ export default function App() {
     setNotification(null);
     if (file === null) {
       clearCachedRecording().catch(console.error);
+      audioUploaderRef.current?.clearInput();
     }
   };
   
@@ -111,7 +121,7 @@ export default function App() {
       setNotification({ message, type: 'error' });
   };
 
-  const transcribeNow = useCallback(async (file: File) => {
+  const transcribeNow = useCallback(async (file: File, bypassCache = false) => {
     if (!file) {
       handleError('没有提供音频文件。');
       return;
@@ -120,45 +130,77 @@ export default function App() {
     setNotification(null);
     setTranscription('');
     setDetectedLanguage('');
+    
+    const onProgress = (message: string) => {
+      setLoadingMessage(message);
+    };
 
     try {
       const hash = await getFileHash(file);
-      const cachedResult = await getCachedTranscription(hash);
+      const cachedResult = bypassCache ? null : await getCachedTranscription(hash);
+      
+      let finalTranscription: string;
+      let finalLanguage: string;
 
       if (cachedResult) {
         setTranscription(cachedResult.transcription);
         setDetectedLanguage(cachedResult.detectedLanguage);
+        finalTranscription = cachedResult.transcription;
+        finalLanguage = cachedResult.detectedLanguage;
+
         if (autoCopy && cachedResult.transcription) {
           navigator.clipboard.writeText(cachedResult.transcription);
           setNotification({ message: '识别结果已从缓存加载并复制', type: 'success' });
         } else {
           setNotification({ message: '识别结果已从缓存加载', type: 'success' });
         }
-        return;
+      } else {
+          onProgress('正在压缩音频（如果需要）...');
+          const fileToTranscribe = await compressAudio(file, compressionLevel);
+          const result = await transcribeAudio(fileToTranscribe, context, language, enableItn, onProgress);
+          setTranscription(result.transcription);
+          setDetectedLanguage(result.detectedLanguage);
+          finalTranscription = result.transcription;
+          finalLanguage = result.detectedLanguage;
+
+          if (result.transcription) {
+            await setCachedTranscription(hash, {
+              transcription: result.transcription,
+              detectedLanguage: result.detectedLanguage,
+            });
+          }
+
+          if (autoCopy && result.transcription) {
+            navigator.clipboard.writeText(result.transcription);
+            setNotification({ message: '识别结果已复制到剪贴板', type: 'success' });
+          }
       }
 
-      const fileToTranscribe = await compressAudio(file, compressionLevel);
-      const result = await transcribeAudio(fileToTranscribe, context, language, enableItn);
-      setTranscription(result.transcription);
-      setDetectedLanguage(result.detectedLanguage);
-
-      if (result.transcription) {
-        await setCachedTranscription(hash, {
-          transcription: result.transcription,
-          detectedLanguage: result.detectedLanguage,
-        });
+      if (finalTranscription) {
+        const newHistoryItem: HistoryItem = {
+          id: Date.now(),
+          fileName: file.name,
+          transcription: finalTranscription,
+          detectedLanguage: finalLanguage,
+          context,
+          timestamp: Date.now(),
+          audioFile: file,
+        };
+        try {
+          await addHistoryItem(newHistoryItem);
+          setHistory(prevHistory => [newHistoryItem, ...prevHistory]);
+        } catch (historyError) {
+          console.error("Failed to save history item:", historyError);
+        }
       }
 
-      if (autoCopy && result.transcription) {
-        navigator.clipboard.writeText(result.transcription);
-        setNotification({ message: '识别结果已复制到剪贴板', type: 'success' });
-      }
     } catch (err) {
       console.error('Transcription error:', err);
       const errorMessage = err instanceof Error ? err.message : '转录过程中发生未知错误。';
       handleError(errorMessage);
     } finally {
       setIsLoading(false);
+      setLoadingMessage('');
     }
   }, [context, language, enableItn, autoCopy, compressionLevel]);
 
@@ -174,9 +216,15 @@ export default function App() {
       return;
     }
     
-    transcribeNow(audioFile);
+    transcribeNow(audioFile, false);
 
   }, [audioFile, isRecording, transcribeNow]);
+
+  const handleRetry = useCallback(() => {
+    if (audioFile) {
+      transcribeNow(audioFile, true);
+    }
+  }, [audioFile, transcribeNow]);
   
   useEffect(() => {
     if (transcribeAfterRecording && audioFile && !isRecording) {
@@ -185,6 +233,47 @@ export default function App() {
     }
   }, [transcribeAfterRecording, audioFile, isRecording, transcribeNow]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' || isSpaceDown.current || isSettingsOpen) {
+        return;
+      }
+
+      const target = event.target as HTMLElement;
+      if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(target.tagName) || target.isContentEditable) {
+        return;
+      }
+      
+      event.preventDefault();
+
+      if (!isRecording && !isLoading) {
+        isSpaceDown.current = true;
+        audioUploaderRef.current?.startRecording();
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' || !isSpaceDown.current) {
+        return;
+      }
+      
+      event.preventDefault();
+      isSpaceDown.current = false;
+
+      if (isRecording) {
+        handleTranscribe();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isRecording, isLoading, handleTranscribe, isSettingsOpen]);
+
 
   const handleLoadExample = useCallback(async (exampleId: number) => {
     setIsLoading(true);
@@ -192,9 +281,13 @@ export default function App() {
     setAudioFile(null);
     setTranscription('');
     setDetectedLanguage('');
+    
+    const onProgress = (message: string) => {
+      setLoadingMessage(message);
+    };
 
     try {
-      const { file, context: exampleContext } = await loadExample(exampleId);
+      const { file, context: exampleContext } = await loadExample(exampleId, onProgress);
       setAudioFile(file);
       setContext(exampleContext);
     } catch (err) {
@@ -203,8 +296,42 @@ export default function App() {
       handleError(errorMessage);
     } finally {
       setIsLoading(false);
+      setLoadingMessage('');
     }
   }, []);
+
+  const handleRestoreHistory = (id: number) => {
+    const item = history.find(h => h.id === id);
+    if (item) {
+        setAudioFile(item.audioFile);
+        setContext(item.context);
+        setTranscription(item.transcription);
+        setDetectedLanguage(item.detectedLanguage);
+        setNotification({ message: '已从历史记录恢复', type: 'success' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleDeleteHistory = async (id: number) => {
+    try {
+      await deleteHistoryItem(id);
+      setHistory(prev => prev.filter(item => item.id !== id));
+      setNotification({ message: '已删除历史记录', type: 'success' });
+    } catch(err) {
+      handleError('删除历史记录失败。');
+    }
+  };
+
+  const handleClearHistory = async () => {
+    try {
+      await clearHistory();
+      setHistory([]);
+      setNotification({ message: '所有历史记录已清除', type: 'success' });
+      setIsSettingsOpen(false); // Close panel after clearing
+    } catch(err) {
+      handleError('清除历史记录失败。');
+    }
+  };
 
 
   return (
@@ -214,9 +341,13 @@ export default function App() {
         <main className="mt-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-6">
+              <AudioPreview
+                file={audioFile}
+                onClear={() => handleFileChange(null)}
+                disabled={isLoading}
+              />
               <AudioUploader 
                 ref={audioUploaderRef}
-                file={audioFile} 
                 onFileChange={handleFileChange}
                 onRecordingChange={setIsRecording}
                 disabled={isLoading}
@@ -231,25 +362,44 @@ export default function App() {
                 transcription={transcription}
                 detectedLanguage={detectedLanguage}
                 isLoading={isLoading}
+                loadingStatus={loadingMessage}
               />
                <div className="pt-6">
-                <button
-                  onClick={handleTranscribe}
-                  disabled={(!audioFile && !isRecording) || isLoading}
-                  className="w-full md:w-auto flex items-center justify-center px-6 py-3 text-lg font-semibold text-white transition-all duration-300 rounded-lg shadow-lg bg-brand-primary hover:bg-brand-secondary disabled:bg-base-300 disabled:cursor-not-allowed disabled:text-content-200 focus:outline-none focus:ring-4 focus:ring-brand-primary focus:ring-opacity-50"
-                >
-                  {isLoading ? (
-                    <>
-                      <LoaderIcon className="w-6 h-6 mr-3" />
-                      正在识别...
-                    </>
-                  ) : isRecording ? (
-                      '停止并识别'
-                  ) : (
-                    '开始识别'
+                 <div className="flex items-stretch gap-3">
+                  <button
+                    onClick={handleTranscribe}
+                    disabled={(!audioFile && !isRecording) || isLoading}
+                    className="flex-grow flex items-center justify-center px-6 py-3 text-lg font-semibold text-white transition-all duration-300 rounded-lg shadow-lg bg-brand-primary hover:bg-brand-secondary disabled:bg-base-300 disabled:cursor-not-allowed disabled:text-content-200 focus:outline-none focus:ring-4 focus:ring-brand-primary focus:ring-opacity-50"
+                  >
+                    {isLoading ? (
+                      <>
+                        <LoaderIcon className="w-6 h-6 mr-3" />
+                        正在识别...
+                      </>
+                    ) : isRecording ? (
+                        '停止并识别'
+                    ) : (
+                      '开始识别'
+                    )}
+                  </button>
+                  {transcription && audioFile && !isLoading && (
+                    <button
+                      onClick={handleRetry}
+                      title="重试"
+                      aria-label="重试识别"
+                      className="flex-shrink-0 p-3 text-content-100 transition-colors duration-300 rounded-lg shadow-lg bg-base-200 border border-base-300 hover:bg-base-300 focus:outline-none focus:ring-4 focus:ring-brand-primary focus:ring-opacity-50"
+                    >
+                      <RetryIcon className="w-6 h-6" />
+                    </button>
                   )}
-                </button>
+                 </div>
               </div>
+              <HistoryPanel
+                items={history}
+                onRestore={handleRestoreHistory}
+                onDelete={handleDeleteHistory}
+                disabled={isLoading}
+              />
             </div>
           </div>
           <div className="md:hidden mt-6">
@@ -273,6 +423,7 @@ export default function App() {
         setEnableItn={setEnableItn}
         compressionLevel={compressionLevel}
         setCompressionLevel={setCompressionLevel}
+        onClearHistory={handleClearHistory}
         disabled={isLoading}
       />
     </div>

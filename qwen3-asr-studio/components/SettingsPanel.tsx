@@ -17,6 +17,7 @@ interface SettingsPanelProps {
   setEnableItn: (enable: boolean) => void;
   compressionLevel: CompressionLevel;
   setCompressionLevel: (level: CompressionLevel) => void;
+  onClearHistory: () => void;
   disabled?: boolean;
 }
 
@@ -72,9 +73,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setEnableItn,
   compressionLevel,
   setCompressionLevel,
+  onClearHistory,
   disabled,
 }) => {
   if (!isOpen) return null;
+
+  const handleClearHistory = () => {
+    if (window.confirm('您确定要清除所有识别历史记录吗？此操作无法撤销。')) {
+        onClearHistory();
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" aria-labelledby="settings-title" role="dialog" aria-modal="true">
@@ -127,6 +135,21 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               enabled={autoCopy}
               onChange={setAutoCopy}
             />
+          </div>
+
+          {/* History setting */}
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <label className="text-base font-medium">
+              清除历史记录
+              <p className="text-sm text-content-200 font-normal">删除所有已保存的识别结果。</p>
+            </label>
+            <button
+              onClick={handleClearHistory}
+              disabled={disabled}
+              className="px-4 py-2 text-sm font-medium rounded-md transition-colors text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed"
+            >
+              立即清除
+            </button>
           </div>
 
           <div className="border-t border-base-300"></div>

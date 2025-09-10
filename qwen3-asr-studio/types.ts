@@ -14,3 +14,13 @@ export enum CompressionLevel {
   MEDIUM = 'medium',
   MINIMUM = 'minimum',
 }
+
+export interface HistoryItem {
+  id: number;
+  fileName: string;
+  transcription: string;
+  detectedLanguage: string;
+  context: string;
+  timestamp: number;
+  audioFile: File;
+}

@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
 import { StopIcon } from './icons/StopIcon';
@@ -12,6 +13,7 @@ interface AudioRecorderProps {
 
 export interface AudioRecorderHandle {
   stopRecording: () => void;
+  startRecording: () => void;
 }
 
 const formatTime = (timeInSeconds: number) => {
@@ -150,10 +152,6 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
     cleanupAudio();
   }, [recordingStatus, cleanupAudio]);
 
-  useImperativeHandle(ref, () => ({
-    stopRecording: handleStopRecording,
-  }));
-
   const handleStartRecording = async () => {
     if (recordingStatus === 'recording' || !navigator.mediaDevices) {
         onRecordingError("您的浏览器不支持录音功能。");
@@ -214,6 +212,11 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
         onRecordingError("麦克风访问被拒绝或不可用。");
     }
   };
+
+  useImperativeHandle(ref, () => ({
+    stopRecording: handleStopRecording,
+    startRecording: handleStartRecording,
+  }));
 
   return (
     <div className="flex flex-col items-center justify-center">

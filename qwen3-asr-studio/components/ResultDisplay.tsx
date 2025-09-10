@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CopyIcon } from './icons/CopyIcon';
 import { CheckIcon } from './icons/CheckIcon';
@@ -8,6 +9,7 @@ interface ResultDisplayProps {
   transcription: string;
   detectedLanguage: string;
   isLoading: boolean;
+  loadingStatus?: string;
 }
 
 const loadingMessages = [
@@ -20,7 +22,7 @@ const loadingMessages = [
 ];
 
 
-export const ResultDisplay: React.FC<ResultDisplayProps> = ({ transcription, detectedLanguage, isLoading }) => {
+export const ResultDisplay: React.FC<ResultDisplayProps> = ({ transcription, detectedLanguage, isLoading, loadingStatus }) => {
   const [copied, setCopied] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
 
@@ -32,7 +34,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ transcription, det
   }, [copied]);
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading && !loadingStatus) {
       let messageIndex = 0;
       const interval = setInterval(() => {
         messageIndex = (messageIndex + 1) % loadingMessages.length;
@@ -44,7 +46,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ transcription, det
         setLoadingMessage(loadingMessages[0]);
       };
     }
-  }, [isLoading]);
+  }, [isLoading, loadingStatus]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(transcription);
@@ -71,7 +73,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ transcription, det
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <LoaderIcon className="h-10 text-brand-primary mb-4" />
-            <p className="text-content-200 px-4">{loadingMessage}</p>
+            <p className="text-content-200 px-4">{loadingStatus || loadingMessage}</p>
           </div>
         ) : hasResult ? (
           <div>

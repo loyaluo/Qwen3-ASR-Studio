@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
 import { StopIcon } from './icons/StopIcon';
@@ -10,6 +11,7 @@ interface AudioRecorderProps {
   onRecordingChange: (isRecording: boolean) => void;
   disabled?: boolean;
   onRecordingError: (message: string) => void;
+  theme: 'light' | 'dark';
 }
 
 export interface AudioRecorderHandle {
@@ -23,7 +25,7 @@ const formatTime = (timeInSeconds: number) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>(({ onFileChange, onRecordingChange, disabled, onRecordingError }, ref) => {
+export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>(({ onFileChange, onRecordingChange, disabled, onRecordingError, theme }, ref) => {
   const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording'>('idle');
   const [recordingTime, setRecordingTime] = useState(0);
 
@@ -95,12 +97,16 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
         const context = canvas.getContext('2d');
         if (!context) return;
         
+        const computedStyle = getComputedStyle(canvas);
+        const backgroundColor = computedStyle.getPropertyValue('--color-base-100').trim() || '#1f2937';
+        const strokeColor = computedStyle.getPropertyValue('--color-brand-primary').trim() || '#10b981';
+
         analyser.getByteTimeDomainData(dataArray);
 
-        context.fillStyle = '#1f2937'; // bg-base-100
+        context.fillStyle = backgroundColor;
         context.fillRect(0, 0, canvas.width, canvas.height);
-        context.lineWidth = 2;
-        context.strokeStyle = '#10b981'; // brand-primary
+        context.lineWidth = 2.5;
+        context.strokeStyle = strokeColor;
         context.beginPath();
         const sliceWidth = (canvas.width * 1.0) / analyser.fftSize;
         let x = 0;
@@ -128,7 +134,7 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
             animationFrameIdRef.current = null;
         }
     };
-}, [recordingStatus]);
+}, [recordingStatus, theme]); // Depend on theme to re-capture colors if it changes
 
   const startTimer = () => {
     stopTimer();

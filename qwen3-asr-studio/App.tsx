@@ -193,17 +193,16 @@ export default function App() {
       Array.from(document.querySelectorAll('style, link[rel="stylesheet"]')).forEach(node => {
         pipWin.document.head.appendChild(node.cloneNode(true));
       });
-       // Also copy inline tailwind config
-      document.querySelectorAll('script').forEach(script => {
-          if (script.textContent?.includes('tailwind.config')) {
-              const newScript = pipWin.document.createElement('script');
-              newScript.textContent = script.textContent;
-              pipWin.document.head.appendChild(newScript);
-          }
+      // Copy all scripts from the main document's head to ensure JS/Tailwind works.
+      Array.from(document.head.querySelectorAll('script')).forEach(script => {
+        const newScript = pipWin.document.createElement('script');
+        if (script.src) newScript.src = script.src;
+        newScript.textContent = script.textContent;
+        pipWin.document.head.appendChild(newScript);
       });
 
       pipWin.document.title = "输入法模式 - Qwen3-ASR";
-      pipWin.document.body.className = document.body.className; // Copy body classes
+      pipWin.document.documentElement.className = document.documentElement.className; // Copy theme class
       pipWin.document.body.style.margin = '0';
       pipWin.document.body.style.overflow = 'hidden';
 
@@ -452,6 +451,7 @@ export default function App() {
                 onRecordingChange={setIsRecording}
                 disabled={isLoading}
                 onRecordingError={handleError}
+                theme={theme}
               />
               <div className="hidden md:block">
                 <ExampleButtons onLoadExample={handleLoadExample} disabled={isLoading} />
@@ -538,9 +538,11 @@ export default function App() {
       />
        {isPipActive && pipContainer && createPortal(
         <PipView
-          transcribeAudio={transcribeAudio}
           onTranscriptionComplete={handleTranscriptionCompleteFromPip}
           theme={theme}
+          context={context}
+          language={language}
+          enableItn={enableItn}
         />,
         pipContainer
       )}

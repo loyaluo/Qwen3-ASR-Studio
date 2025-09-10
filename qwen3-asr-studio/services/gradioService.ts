@@ -77,7 +77,10 @@ export const transcribeAudio = async (
       if (result.success && result.data && Array.isArray(result.data) && result.data.length >= 2) {
         onProgress('识别成功！');
         const detectedLangStr = result.data[1] as string; // e.g., "检测到的语言：中文"
-        const detectedLanguage = (detectedLangStr.split('：')[1] || detectedLangStr).trim();
+        
+        // Use a regex to robustly extract language, handling different colons and spacing.
+        const langMatch = detectedLangStr.match(/(?:：|:)\s*(.*)/);
+        const detectedLanguage = langMatch ? langMatch[1].trim() : detectedLangStr.trim();
 
         return {
           transcription: result.data[0] as string,

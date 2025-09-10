@@ -6,6 +6,7 @@ import { MicrophoneIcon } from './icons/MicrophoneIcon';
 import { CheckIcon } from './icons/CheckIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { LoaderIcon } from './icons/LoaderIcon';
+import { StopIcon } from './icons/StopIcon';
 
 interface PipViewProps {
   onTranscriptionResult: (result: {
@@ -136,7 +137,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
             case 'idle':
                 return <MicrophoneIcon className={iconClass} />;
             case 'recording':
-                return <MicrophoneIcon className={iconClass} />;
+                return <StopIcon className={iconClass} />;
             case 'processing':
                 return <LoaderIcon className="text-white w-7 h-7" />;
             case 'success':
@@ -151,7 +152,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
     const getIconContainerClass = () => {
         const base = "p-2 rounded-md transition-colors duration-300 flex-shrink-0";
         switch (status) {
-            case 'recording': return `${base} bg-brand-primary animate-pulse-custom`;
+            case 'recording': return `${base} bg-red-600 animate-pulse-custom`;
             case 'error': return `${base} bg-red-600`;
             case 'success': return `${base} bg-green-600`;
             default: return `${base} bg-brand-primary`;

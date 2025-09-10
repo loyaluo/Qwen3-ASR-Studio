@@ -1,20 +1,9 @@
-
 import React from 'react';
 
-export const LoaderIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={`animate-spin ${props.className}`}
-    {...props}
-  >
-    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-  </svg>
+export const LoaderIcon: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...props }) => (
+  <div className={`flex items-center justify-center space-x-2 ${className}`} {...props}>
+    <div className="w-3 h-3 bg-current rounded-full animate-pulsing-dot"></div>
+    <div className="w-3 h-3 bg-current rounded-full animate-pulsing-dot" style={{ animationDelay: '0.2s' }}></div>
+    <div className="w-3 h-3 bg-current rounded-full animate-pulsing-dot" style={{ animationDelay: '0.4s' }}></div>
+  </div>
 );

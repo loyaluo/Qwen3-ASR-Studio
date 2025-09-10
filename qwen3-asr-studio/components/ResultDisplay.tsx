@@ -10,8 +10,19 @@ interface ResultDisplayProps {
   isLoading: boolean;
 }
 
+const loadingMessages = [
+  "正在初始化模型...",
+  "正在处理您的音频...",
+  "执行神经网络分析...",
+  "正在识别语音内容...",
+  "生成最终转录文本...",
+  "快好了...",
+];
+
+
 export const ResultDisplay: React.FC<ResultDisplayProps> = ({ transcription, detectedLanguage, isLoading }) => {
   const [copied, setCopied] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
 
   useEffect(() => {
     if (copied) {
@@ -19,6 +30,21 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ transcription, det
       return () => clearTimeout(timer);
     }
   }, [copied]);
+
+  useEffect(() => {
+    if (isLoading) {
+      let messageIndex = 0;
+      const interval = setInterval(() => {
+        messageIndex = (messageIndex + 1) % loadingMessages.length;
+        setLoadingMessage(loadingMessages[messageIndex]);
+      }, 2500);
+
+      return () => {
+        clearInterval(interval);
+        setLoadingMessage(loadingMessages[0]);
+      };
+    }
+  }, [isLoading]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(transcription);
@@ -43,9 +69,9 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ transcription, det
       </div>
       <div className="flex-grow p-4 rounded-md bg-base-100 min-h-[200px] overflow-y-auto">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full">
-            <LoaderIcon className="w-10 h-10 text-brand-primary mb-3" />
-            <p className="text-content-200">正在处理音频...</p>
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <LoaderIcon className="h-10 text-brand-primary mb-4" />
+            <p className="text-content-200 px-4">{loadingMessage}</p>
           </div>
         ) : hasResult ? (
           <div>

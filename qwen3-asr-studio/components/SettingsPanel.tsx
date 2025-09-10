@@ -96,7 +96,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         <div className="mt-4 space-y-6">
           {/* Theme setting */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <label className="text-base font-medium">
               主题
             </label>
@@ -117,8 +117,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </div>
           
           {/* Auto-copy setting */}
-          <div className="flex items-center justify-between">
-            <label htmlFor="auto-copy" className="text-base font-medium">
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <label htmlFor="auto-copy" className="text-base font-medium flex-1">
               自动复制结果
               <p className="text-sm text-content-200 font-normal">识别完成后自动将结果复制到剪贴板。</p>
             </label>
@@ -150,7 +150,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 />
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <label htmlFor="language-setting" className="text-base font-medium">
                   语言
                 </label>
@@ -159,7 +159,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   value={language}
                   onChange={(e) => setLanguage(e.target.value as Language)}
                   disabled={disabled}
-                  className="w-48 px-3 py-2 text-sm rounded-md shadow-sm bg-base-100 border border-base-300 text-content-100 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary disabled:opacity-60"
+                  className="w-full sm:w-48 px-3 py-2 text-sm rounded-md shadow-sm bg-base-100 border border-base-300 text-content-100 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary disabled:opacity-60"
                 >
                   {Object.values(Language).map((langValue) => (
                     <option key={langValue} value={langValue}>
@@ -169,8 +169,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </select>
               </div>
 
-              <div className="flex items-center justify-between">
-                <label htmlFor="itn-setting" className="text-base font-medium">
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <label htmlFor="itn-setting" className="text-base font-medium flex-1">
                   启用反向文本标准化 (ITN)
                 </label>
                 <ToggleSwitch
@@ -181,7 +181,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 />
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <label className="text-base font-medium">
                   音频压缩
                   <p className="text-sm text-content-200 font-normal">减小文件大小以加快上传速度。</p>

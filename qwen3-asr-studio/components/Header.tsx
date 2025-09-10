@@ -2,17 +2,13 @@ import React from 'react';
 import { PipIcon } from './icons/PipIcon';
 import { SettingsIcon } from './icons/SettingsIcon';
 
-export const Header: React.FC<{ onSettingsClick: () => void }> = ({ onSettingsClick }) => {
-  const handlePipClick = async () => {
-    // Fallback to a normal popup window
-    const openPopup = () => {
-        window.open(
-            '/pip.html', 
-            'Qwen3-ASR-Studio-Input-Mode', 
-            'width=380,height=520,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=no'
-        );
-    }
+interface HeaderProps {
+  onSettingsClick: () => void;
+  onPipError: (message: string) => void;
+}
 
+export const Header: React.FC<HeaderProps> = ({ onSettingsClick, onPipError }) => {
+  const handlePipClick = async () => {
     // Use Document Picture-in-Picture API if available
     if ('documentPictureInPicture' in window) {
       try {
@@ -22,7 +18,6 @@ export const Header: React.FC<{ onSettingsClick: () => void }> = ({ onSettingsCl
         });
 
         // Fetch pip.html and write its contents to the PiP window's document.
-        // This is more robust than manually creating each element.
         const response = await fetch('/pip.html');
         if (!response.ok) {
           throw new Error(`Failed to fetch pip.html: ${response.statusText}`);
@@ -32,11 +27,11 @@ export const Header: React.FC<{ onSettingsClick: () => void }> = ({ onSettingsCl
         pipWindow.document.close();
 
       } catch (error) {
-        console.error('Failed to open document PiP window, falling back to popup:', error);
-        openPopup();
+        console.error('Failed to open document PiP window:', error);
+        onPipError('打开画中画窗口失败。用户可能已拒绝请求。');
       }
     } else {
-      openPopup();
+      onPipError('您的浏览器不支持此功能。请使用最新版本的 Chrome 或 Edge 浏览器。');
     }
   };
 

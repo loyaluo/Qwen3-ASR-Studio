@@ -9,6 +9,14 @@ interface AudioPreviewProps {
   disabled?: boolean;
 }
 
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+};
+
 export const AudioPreview: React.FC<AudioPreviewProps> = ({ file, onClear, disabled }) => {
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
 
@@ -48,7 +56,10 @@ export const AudioPreview: React.FC<AudioPreviewProps> = ({ file, onClear, disab
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <AudioWaveIcon className="w-6 h-6 text-brand-primary flex-shrink-0" />
-              <p className="text-sm font-medium text-content-100 truncate" title={file.name}>{file.name}</p>
+              <div className="flex items-baseline gap-2 min-w-0">
+                <p className="text-sm font-medium text-content-100 truncate" title={file.name}>{file.name}</p>
+                <span className="text-xs text-content-200 flex-shrink-0">{formatFileSize(file.size)}</span>
+              </div>
             </div>
             <div className="flex items-center gap-1">
               <button 

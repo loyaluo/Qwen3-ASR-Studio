@@ -360,7 +360,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-base-100 text-content-100 font-sans p-4 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
-        <Header onSettingsClick={() => setIsSettingsOpen(true)} />
+        <Header onSettingsClick={() => setIsSettingsOpen(true)} onPipError={handleError} />
         <main className="mt-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-6">

@@ -144,10 +144,17 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
     const getIconContainerClass = () => {
         const base = "p-2 rounded-md transition-colors duration-300 flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary focus:ring-offset-base-100 disabled:opacity-50 disabled:cursor-not-allowed";
         switch (status) {
-            case 'recording': return `${base} bg-red-600 animate-pulse-custom`;
-            case 'error': return `${base} bg-red-600`;
-            case 'success': return `${base} bg-green-600`;
-            default: return `${base} bg-brand-primary`;
+            case 'idle':
+                return `${base} bg-brand-primary animate-pulse-idle`;
+            case 'recording': 
+                return `${base} bg-red-600 animate-pulse-custom`;
+            case 'error': 
+                return `${base} bg-red-600`;
+            case 'success': 
+                return `${base} bg-green-600`;
+            case 'processing':
+            default: 
+                return `${base} bg-brand-primary`;
         }
     };
 
@@ -158,6 +165,20 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
             <style>{`
                 @keyframes pulse-custom { 50% { opacity: .6; } }
                 .animate-pulse-custom { animation: pulse-custom 2s cubic-bezier(0.4, 0.6, 1) infinite; }
+                @keyframes pulse-idle {
+                  0% {
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+                  }
+                  70% {
+                    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+                  }
+                  100% {
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+                  }
+                }
+                .animate-pulse-idle {
+                  animation: pulse-idle 2s infinite;
+                }
             `}</style>
             <button
                 onClick={handleClick}

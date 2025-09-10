@@ -203,7 +203,15 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
             const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
             const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
             const fileExtension = mimeType.split('/')[1]?.split(';')[0] || 'webm';
-            const audioFile = new File([audioBlob], `recording-${new Date().toISOString()}.${fileExtension}`, { type: mimeType });
+            
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const day = now.getDate().toString().padStart(2, '0');
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const formattedDate = `${year}-${month}-${day}_${hours}-${minutes}`;
+            const audioFile = new File([audioBlob], `recording-${formattedDate}.${fileExtension}`, { type: mimeType });
             
             // Cache the recording, but proceed with UI update regardless of cache success
             setCachedRecording(audioFile).catch(err => {
@@ -230,32 +238,33 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
   }));
 
   return (
-    <div className="flex flex-row items-end w-full gap-4">
-      <button
-        onClick={recordingStatus === 'idle' ? handleStartRecording : handleStopRecording}
-        disabled={disabled}
-        title={recordingStatus === 'idle' ? '按住空格键快捷录音' : '松开空格键快捷停止'}
-        className={`flex-shrink-0 flex items-center justify-center w-36 h-14 px-4 py-2 font-semibold text-white transition-colors duration-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-200 ${
-          recordingStatus === 'idle' 
-            ? 'bg-brand-primary hover:bg-brand-secondary focus:ring-brand-primary' 
-            : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-        } disabled:opacity-50 disabled:cursor-not-allowed`}
-      >
-        {recordingStatus === 'idle' ? (
-          <MicrophoneIcon className="w-6 h-6 mr-2" />
-        ) : (
-          <StopIcon className="w-6 h-6 mr-2" />
-        )}
-        {recordingStatus === 'idle' ? '开始录音' : '停止录音'}
-      </button>
-      <div className="flex flex-col flex-grow text-left">
-        <div className="flex items-baseline gap-3">
-          <p className="text-2xl font-mono text-content-100 tracking-wider">
-            {formatTime(recordingTime)}
-          </p>
-          {recordingStatus === 'recording' && <p className="text-sm text-brand-primary animate-pulse">正在录音...</p>}
+    <div className="flex flex-col sm:flex-row items-stretch w-full gap-4">
+      <div className="flex flex-col items-center flex-shrink-0">
+        <div className="flex items-baseline gap-3 mb-2">
+            <p className="text-2xl font-mono text-content-100 tracking-wider">
+              {formatTime(recordingTime)}
+            </p>
         </div>
-        <div className="w-full mt-1 h-16 bg-base-100 rounded-md overflow-hidden">
+        <button
+          onClick={recordingStatus === 'idle' ? handleStartRecording : handleStopRecording}
+          disabled={disabled}
+          title={recordingStatus === 'idle' ? '按住空格键快捷录音' : '松开空格键快捷停止'}
+          className={`flex-shrink-0 flex items-center justify-center w-full sm:w-36 h-14 px-4 py-2 font-semibold text-white transition-colors duration-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-200 ${
+            recordingStatus === 'idle' 
+              ? 'bg-brand-primary hover:bg-brand-secondary focus:ring-brand-primary' 
+              : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          {recordingStatus === 'idle' ? (
+            <MicrophoneIcon className="w-6 h-6 mr-2" />
+          ) : (
+            <StopIcon className="w-6 h-6 mr-2" />
+          )}
+          {recordingStatus === 'idle' ? '开始录音' : '停止录音'}
+        </button>
+      </div>
+      <div className="flex flex-col flex-grow text-left">
+        <div className="w-full h-24 bg-base-100 rounded-md overflow-hidden">
           {recordingStatus === 'recording' ? (
             <canvas ref={canvasRef} className="w-full h-full" />
           ) : (

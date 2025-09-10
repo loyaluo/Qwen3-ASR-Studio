@@ -236,6 +236,24 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
               </div>
             </div>
+
+            <div className="border-t border-base-300"></div>
+
+            <div>
+              <h3 className="text-lg font-semibold text-content-100">关于</h3>
+              <p className="text-sm text-content-200 mt-2">
+                您可以在 GitHub 上找到此项目的源代码。
+              </p>
+              <a
+                href="https://github.com/yeahhe365/Qwen3-ASR-Studio"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 text-sm text-brand-primary hover:underline block truncate"
+              >
+                https://github.com/yeahhe365/Qwen3-ASR-Studio
+              </a>
+            </div>
+
           </div>
         </div>
       </div>

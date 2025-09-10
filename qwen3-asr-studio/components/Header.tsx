@@ -35,10 +35,10 @@ export const Header: React.FC<HeaderProps> = ({ onSettingsClick, onPipClick }) =
           onClick={onPipClick}
           title="输入法模式 (画中画)"
           aria-label="打开输入法模式"
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-content-200 hover:bg-base-200 hover:text-content-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"
+          className="flex items-center gap-2 p-2 sm:px-3 text-sm font-medium rounded-lg text-content-200 hover:bg-base-200 hover:text-content-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"
         >
           <PipIcon className="w-5 h-5" />
-          输入法模式
+          <span className="hidden sm:inline">输入法模式</span>
         </button>
       </div>
     </header>

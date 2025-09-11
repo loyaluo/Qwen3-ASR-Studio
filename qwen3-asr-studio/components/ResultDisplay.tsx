@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { LanguageIcon } from './icons/LanguageIcon';
 import { LoaderIcon } from './icons/LoaderIcon';
@@ -84,7 +83,7 @@ export const ResultDisplay = forwardRef<ResultDisplayHandle, ResultDisplayProps>
 
     return (
       <div className="flex flex-col rounded-lg bg-base-200 border border-base-300 flex-grow min-h-[250px] md:min-h-0 shadow-sm">
-        <div className="flex items-center justify-between p-2 border-b border-base-300">
+        <div className="flex items-center justify-between px-2 border-b border-base-300">
           <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-base-200">
             <button
               onClick={() => onModeChange('single')}
@@ -126,7 +125,6 @@ export const ResultDisplay = forwardRef<ResultDisplayHandle, ResultDisplayProps>
           {isLoading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center h-full text-center bg-base-100/80 backdrop-blur-sm z-10">
               <LoaderIcon color="var(--color-brand-primary)" className="h-10" />
-              <p className="mt-4 text-content-200">{loadingStatus || loadingMessage}</p>
             </div>
           )}
 

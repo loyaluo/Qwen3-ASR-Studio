@@ -6,6 +6,7 @@ const TRANSCRIPTIONS_STORE = 'transcriptions';
 const RECORDINGS_STORE = 'recordings';
 const HISTORY_STORE = 'history';
 const NOTES_STORE = 'notes';
+const RECORDING_KEY = 'last-recording';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 

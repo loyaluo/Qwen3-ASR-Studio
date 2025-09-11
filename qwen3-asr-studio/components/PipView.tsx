@@ -204,7 +204,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
                     className={getIconContainerClass()}
                     aria-label={
                         status === 'recording' ? '停止录音' :
-                        status === 'processing' ? '正在识别' : '开始录音'
+                        status === 'processing' ? '正在识别' : '录音'
                     }
                 >
                     {getIcon()}
@@ -225,7 +225,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
                 type="text"
                 readOnly
                 value={message}
-                placeholder='点击开始录音'
+                placeholder='点击录音'
                 className={`ml-4 text-2xl font-semibold bg-transparent border-none focus:ring-0 p-0 w-full placeholder-content-200 ${status === 'success' || status === 'error' ? 'text-content-100' : 'text-content-200'}`}
             />
         </div>

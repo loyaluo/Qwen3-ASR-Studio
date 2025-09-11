@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
 import { StopIcon } from './icons/StopIcon';
@@ -275,11 +274,21 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {recordingStatus === 'idle' ? (
-            <MicrophoneIcon className="w-6 h-6 mr-2" />
+            <>
+              <MicrophoneIcon className="w-6 h-6 mr-2" />
+              <div className="flex flex-col items-center">
+                <span className="leading-tight">开始</span>
+                <span className="mt-1 text-xs font-normal opacity-80 border border-white/40 rounded px-1.5">
+                  SPACE
+                </span>
+              </div>
+            </>
           ) : (
-            <StopIcon className="w-6 h-6 mr-2" />
+            <>
+              <StopIcon className="w-6 h-6 mr-2" />
+              <span>停止录音</span>
+            </>
           )}
-          {recordingStatus === 'idle' ? '开始录音' : '停止录音'}
         </button>
       </div>
       <div className="flex flex-col flex-grow text-left">

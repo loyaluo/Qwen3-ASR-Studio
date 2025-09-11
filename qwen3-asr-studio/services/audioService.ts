@@ -10,7 +10,7 @@ const TARGET_SAMPLE_RATES = {
  * @param buffer The AudioBuffer to encode.
  * @returns A blob containing the WAV file data.
  */
-function bufferToWav(buffer: AudioBuffer): Blob {
+export function bufferToWav(buffer: AudioBuffer): Blob {
   const numChannels = buffer.numberOfChannels;
   const sampleRate = buffer.sampleRate;
   const numSamples = buffer.length;

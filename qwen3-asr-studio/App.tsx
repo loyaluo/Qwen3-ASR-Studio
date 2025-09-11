@@ -544,6 +544,12 @@ export default function App() {
   }, [transcribeAfterRecording, audioFile, isRecording, transcribeNow]);
 
   useEffect(() => {
+    // If PiP is active, its own event listeners will handle spacebar.
+    // Disable main window listeners to prevent conflicts.
+    if (isPipActive) {
+      return;
+    }
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.code !== 'Space' || isSpaceDown.current || isSettingsOpen) {
         return;
@@ -582,7 +588,7 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [isRecording, isLoading, handleTranscribe, isSettingsOpen]);
+  }, [isPipActive, isRecording, isLoading, handleTranscribe, isSettingsOpen]);
 
 
   const handleDeleteHistory = async (id: number) => {

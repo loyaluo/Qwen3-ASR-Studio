@@ -28,12 +28,25 @@ type Notification = {
 
 type TranscriptionMode = 'single' | 'notes';
 
+// Type for PWA installation prompt event
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
 declare global {
     interface Window {
         documentPictureInPicture?: {
             requestWindow(options?: { width: number, height: number }): Promise<Window>;
             readonly window?: Window;
         };
+    }
+    interface WindowEventMap {
+      beforeinstallprompt: BeforeInstallPromptEvent;
     }
 }
 
@@ -78,10 +91,57 @@ export default function App() {
       : CompressionLevel.ORIGINAL; // Default to original
   });
 
+  // PWA install state
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+
   // PiP State
   const [pipWindow, setPipWindow] = useState<Window | null>(null);
   const [pipContainer, setPipContainer] = useState<HTMLElement | null>(null);
   const isPipActive = !!pipWindow;
+
+  // PWA install prompt handler
+  useEffect(() => {
+    const handleInstallPrompt = (e: BeforeInstallPromptEvent) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
+    };
+  }, []);
+
+  // Service Worker registration
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }, err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+  }, []);
+  
+  const handleInstallApp = () => {
+    if (!installPrompt) {
+        handleError("安装失败，无法找到安装提示。");
+        return;
+    }
+    // Show the prompt
+    installPrompt.prompt();
+    // Wait for the user to respond to the prompt
+    installPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        setNotification({ message: '应用安装成功！', type: 'success' });
+      } else {
+        setNotification({ message: '应用安装已取消。', type: 'success' });
+      }
+      // We can only use the prompt once. Clear it.
+      setInstallPrompt(null);
+    });
+  };
 
   const handleError = useCallback((message: string) => {
       setNotification({ message, type: 'error' });
@@ -717,6 +777,8 @@ export default function App() {
         compressionLevel={compressionLevel}
         setCompressionLevel={setCompressionLevel}
         onClearHistory={handleClearHistory}
+        canInstall={!!installPrompt}
+        onInstallApp={handleInstallApp}
         disabled={isLoading}
       />
        {isPipActive && pipContainer && createPortal(

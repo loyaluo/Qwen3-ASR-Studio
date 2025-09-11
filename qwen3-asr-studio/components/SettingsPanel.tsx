@@ -20,6 +20,8 @@ interface SettingsPanelProps {
   setCompressionLevel: (level: CompressionLevel) => void;
   onClearHistory: () => void;
   disabled?: boolean;
+  canInstall: boolean;
+  onInstallApp: () => void;
 }
 
 const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; disabled?: boolean; id: string; }> = ({ enabled, onChange, disabled, id }) => {
@@ -76,6 +78,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setCompressionLevel,
   onClearHistory,
   disabled,
+  canInstall,
+  onInstallApp,
 }) => {
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
@@ -143,6 +147,22 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 onChange={setAutoCopy}
               />
             </div>
+            
+            {/* PWA Install setting */}
+            {canInstall && (
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <label className="text-base font-medium">
+                  安装应用
+                  <p className="text-sm text-content-200 font-normal">将应用安装到设备，以便离线访问。</p>
+                </label>
+                <button
+                  onClick={onInstallApp}
+                  className="px-4 py-2 text-sm font-medium rounded-md transition-colors text-white bg-brand-primary hover:bg-brand-secondary"
+                >
+                  安装
+                </button>
+              </div>
+            )}
 
             {/* History setting */}
             <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">

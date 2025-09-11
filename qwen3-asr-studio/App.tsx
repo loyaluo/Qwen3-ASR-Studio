@@ -334,13 +334,13 @@ export default function App() {
       Array.from(document.querySelectorAll('style, link[rel="stylesheet"]')).forEach(node => {
         pipWin.document.head.appendChild(node.cloneNode(true));
       });
-      // Copy all scripts from the main document's head to ensure JS/Tailwind works.
-      Array.from(document.head.querySelectorAll('script')).forEach(script => {
+      // Selectively copy only the Tailwind config script to ensure it's available before the main script runs.
+      const tailwindConfigScript = Array.from(document.head.querySelectorAll('script')).find(s => s.textContent?.includes('tailwind.config'));
+      if (tailwindConfigScript) {
         const newScript = pipWin.document.createElement('script');
-        if (script.src) newScript.src = script.src;
-        newScript.textContent = script.textContent;
+        newScript.textContent = tailwindConfigScript.textContent;
         pipWin.document.head.appendChild(newScript);
-      });
+      }
 
       pipWin.document.title = "输入法模式 - Qwen3-ASR";
       pipWin.document.documentElement.className = document.documentElement.className; // Copy theme class
@@ -351,6 +351,25 @@ export default function App() {
       container.id = 'pip-root';
       container.style.height = '100vh';
       pipWin.document.body.appendChild(container);
+
+      // This script will wait for React to render into #pip-root,
+      // then it will load the main Tailwind script, solving the race condition.
+      const bootstrapper = pipWin.document.createElement('script');
+      bootstrapper.textContent = `
+        const targetNode = document.getElementById('pip-root');
+        if (targetNode) {
+          const observer = new MutationObserver(() => {
+            if (targetNode.children.length > 0) {
+              observer.disconnect(); // Stop watching
+              const tailwindScript = document.createElement('script');
+              tailwindScript.src = 'https://cdn.tailwindcss.com';
+              document.head.appendChild(tailwindScript);
+            }
+          });
+          observer.observe(targetNode, { childList: true });
+        }
+      `;
+      pipWin.document.body.appendChild(bootstrapper);
 
       pipWin.addEventListener('pagehide', () => {
         setPipWindow(null);

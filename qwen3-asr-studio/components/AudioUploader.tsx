@@ -48,7 +48,7 @@ export const AudioUploader = forwardRef<AudioUploaderHandle, AudioUploaderProps>
         <div className="flex -mx-4 -mt-4 mb-4 border-b border-base-300">
           <button
             onClick={() => setActiveTab('record')}
-            className={`flex-1 flex items-center justify-center gap-2 p-3 text-center font-medium transition-colors ${activeTab === 'record' ? 'border-b-2 border-brand-primary text-brand-primary' : 'text-content-200 hover:bg-base-300/50'}`}
+            className={`flex-1 flex items-center justify-center gap-2 p-3 text-center font-medium transition-colors ${activeTab === 'record' ? 'font-semibold text-brand-primary' : 'text-content-200 hover:bg-base-300/50'}`}
             aria-selected={activeTab === 'record'}
             role="tab"
           >
@@ -57,7 +57,7 @@ export const AudioUploader = forwardRef<AudioUploaderHandle, AudioUploaderProps>
           </button>
           <button
             onClick={() => setActiveTab('upload')}
-            className={`flex-1 flex items-center justify-center gap-2 p-3 text-center font-medium transition-colors ${activeTab === 'upload' ? 'border-b-2 border-brand-primary text-brand-primary' : 'text-content-200 hover:bg-base-300/50'}`}
+            className={`flex-1 flex items-center justify-center gap-2 p-3 text-center font-medium transition-colors ${activeTab === 'upload' ? 'font-semibold text-brand-primary' : 'text-content-200 hover:bg-base-300/50'}`}
             aria-selected={activeTab === 'upload'}
             role="tab"
           >

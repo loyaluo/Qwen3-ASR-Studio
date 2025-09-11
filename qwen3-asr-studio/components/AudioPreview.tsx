@@ -54,17 +54,17 @@ export const AudioPreview: React.FC<AudioPreviewProps> = ({ file, onFileChange, 
   useEffect(() => {
     if (!file || !waveformRef.current) return;
     
-    // Reset clipping state when a new file is loaded
+    setIsPlayerReady(false);
     setIsClipping(false);
     setSelectedRegion(null);
 
     const ws = WaveSurfer.create({
       container: waveformRef.current,
-      height: 64,
+      height: 40,
       waveColor: 'rgba(209, 213, 219, 0.6)', // base-300
       progressColor: '#10b981', // brand-primary
       cursorColor: 'rgb(243, 244, 246)', // content-100 dark
-      barWidth: 3,
+      barWidth: 2,
       barGap: 2,
       barRadius: 2,
       url: URL.createObjectURL(file),
@@ -88,7 +88,7 @@ export const AudioPreview: React.FC<AudioPreviewProps> = ({ file, onFileChange, 
     });
 
     wsRegions.on('region-clicked', (region, e) => {
-        e.stopPropagation(); // prevent triggering a seek event
+        e.stopPropagation();
         region.play();
     });
 
@@ -116,7 +116,6 @@ export const AudioPreview: React.FC<AudioPreviewProps> = ({ file, onFileChange, 
       if(!isLooping) ws.seekTo(0);
     });
 
-    // Handle theme changes
     const observer = new MutationObserver(setupWaveSurfer);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
@@ -175,7 +174,7 @@ export const AudioPreview: React.FC<AudioPreviewProps> = ({ file, onFileChange, 
     setIsClipping(clipping);
     if (clipping) {
         regionsPluginRef.current.enableDragSelection({
-            color: 'rgba(16, 185, 129, 0.2)', // brand-primary with alpha
+            color: 'rgba(16, 185, 129, 0.2)',
         });
     } else {
         regionsPluginRef.current.disableDragSelection();
@@ -217,74 +216,66 @@ export const AudioPreview: React.FC<AudioPreviewProps> = ({ file, onFileChange, 
     setSelectedRegion(null);
   }, [file, selectedRegion, onFileChange]);
 
+  const controlButtonClasses = "p-1.5 rounded-full text-content-200 hover:bg-base-300/50 hover:text-content-100 disabled:opacity-50";
 
   return (
-    <div className="p-4 rounded-lg bg-base-200 border border-base-300 min-h-[108px] flex flex-col justify-center">
+    <div className="p-4 rounded-lg bg-base-200 border border-base-300 h-[144px] flex flex-col justify-center">
       {file ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <SoundWaveIcon className="w-6 h-6 text-brand-primary flex-shrink-0" />
-              <div className="flex items-baseline gap-2 min-w-0">
-                <p className="text-sm font-medium text-content-100 truncate" title={file.name}>{file.name}</p>
-                <span className="text-xs text-content-200 flex-shrink-0">{formatFileSize(file.size)}</span>
-              </div>
+        <div className={`w-full h-full flex flex-col justify-between transition-opacity duration-300 ${isPlayerReady ? 'opacity-100' : 'opacity-0'}`}>
+            <div className="min-w-0">
+                <div className="flex justify-between items-baseline text-xs">
+                     <p className="font-medium text-content-100 truncate" title={file.name}>
+                        {file.name}
+                    </p>
+                    <span className="font-mono text-content-200 ml-2 flex-shrink-0">{formatTime(currentTime)} / {formatTime(duration)}</span>
+                </div>
+                <div ref={waveformRef} className={`w-full h-10 ${isClipping ? 'cursor-crosshair' : 'cursor-pointer'}`} />
             </div>
-            <div className="flex items-center gap-1">
-              <button onClick={handleDownload} disabled={disabled} className="p-1 rounded-full text-content-200 hover:bg-base-300 hover:text-content-100 disabled:opacity-50" title="下载音频" aria-label="下载音频">
-                <DownloadIcon className="w-5 h-5" />
-              </button>
-              <button onClick={handleClear} disabled={disabled} className="p-1 rounded-full text-content-200 hover:bg-base-300 hover:text-content-100 disabled:opacity-50" title="清除音频" aria-label="清除音频">
-                <CloseIcon className="w-5 h-5" />
-              </button>
+
+            <div className="flex justify-between items-center -mx-1 -mb-1">
+                <div className="flex items-center gap-1">
+                    <button onClick={handleToggleMute} title={isMuted ? "取消静音" : "静音"} className={controlButtonClasses} disabled={disabled}>
+                        {isMuted ? <VolumeOffIcon className="w-4 h-4" /> : <VolumeUpIcon className="w-4 h-4" />}
+                    </button>
+                    <button onClick={handleCyclePlaybackRate} title={`播放速度: ${playbackRate}x`} className="px-2 py-0.5 w-10 text-xs font-semibold rounded-full text-content-200 hover:bg-base-300/50 hover:text-content-100 disabled:opacity-50" disabled={disabled}>
+                        {playbackRate}x
+                    </button>
+                    {isClipping && (
+                      <button onClick={handleSaveClip} disabled={!selectedRegion || disabled} title="保存剪辑" className="px-2 py-0.5 text-xs font-semibold rounded-full text-white bg-brand-primary hover:bg-brand-secondary disabled:bg-base-300 disabled:text-content-200 disabled:cursor-not-allowed">
+                        保存
+                      </button>
+                    )}
+                </div>
+                <div className="flex items-center gap-1">
+                    <button onClick={handleSeek(-5)} title="快退5秒" className={controlButtonClasses} disabled={disabled || isClipping}>
+                        <BackwardIcon className="w-5 h-5" />
+                    </button>
+                    <button onClick={handlePlayPause} title={isPlaying ? "暂停" : "播放"} className="p-2 w-10 h-10 flex-shrink-0 rounded-full text-content-100 bg-base-300/50 hover:bg-base-300 disabled:opacity-50 flex items-center justify-center" disabled={disabled || !isPlayerReady}>
+                        {isPlaying ? <PauseIcon className="w-6 h-6" /> : <PlayIcon className="w-6 h-6" />}
+                    </button>
+                    <button onClick={handleSeek(5)} title="快进5秒" className={controlButtonClasses} disabled={disabled || isClipping}>
+                        <FastForwardIcon className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="flex items-center gap-1">
+                    <button onClick={handleToggleLoop} title="循环播放" className={`${controlButtonClasses} ${isLooping ? 'text-brand-primary' : ''}`} disabled={disabled}>
+                        <RetryIcon className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleToggleClipping} title="修剪音频" className={`${controlButtonClasses} ${isClipping ? 'text-brand-primary bg-base-300/50' : ''}`} disabled={disabled}>
+                        <ScissorsIcon className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleDownload} className={controlButtonClasses} disabled={disabled} title="下载音频">
+                        <DownloadIcon className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleClear} className={controlButtonClasses} disabled={disabled} title="清除音频">
+                        <CloseIcon className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
-          </div>
-          <div className={`transition-opacity duration-300 ${isPlayerReady ? 'opacity-100' : 'opacity-0'}`}>
-            <div ref={waveformRef} className={`w-full h-16 ${isClipping ? 'cursor-crosshair' : 'cursor-pointer'}`} />
-            <div className="flex justify-between items-center mt-2 text-xs font-mono text-content-200">
-              <span>{formatTime(currentTime)}</span>
-              <span>{isClipping && selectedRegion ? `${formatTime(selectedRegion.end - selectedRegion.start)}` : formatTime(duration)}</span>
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-2">
-                <button onClick={handleToggleMute} title={isMuted ? "取消静音" : "静音"} className="p-2 rounded-full text-content-200 hover:bg-base-300/50 hover:text-content-100 disabled:opacity-50" disabled={disabled}>
-                  {isMuted ? <VolumeOffIcon className="w-5 h-5" /> : <VolumeUpIcon className="w-5 h-5" />}
-                </button>
-                <button onClick={handleCyclePlaybackRate} title={`播放速度: ${playbackRate}x`} className="px-2 py-1 w-12 text-sm font-semibold rounded-md text-content-200 hover:bg-base-300/50 hover:text-content-100 disabled:opacity-50 border border-base-300" disabled={disabled}>
-                  {playbackRate}x
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={handleSeek(-5)} title="快退5秒" className="p-2 rounded-full text-content-200 hover:bg-base-300/50 hover:text-content-100 disabled:opacity-50" disabled={disabled || isClipping}>
-                  <BackwardIcon className="w-6 h-6" />
-                </button>
-                <button onClick={handlePlayPause} title={isPlaying ? "暂停" : "播放"} className="p-2 w-12 h-12 rounded-full text-content-100 bg-base-300/50 hover:bg-base-300 disabled:opacity-50" disabled={disabled}>
-                  {isPlaying ? <PauseIcon className="w-7 h-7 mx-auto" /> : <PlayIcon className="w-7 h-7 mx-auto" />}
-                </button>
-                <button onClick={handleSeek(5)} title="快进5秒" className="p-2 rounded-full text-content-200 hover:bg-base-300/50 hover:text-content-100 disabled:opacity-50" disabled={disabled || isClipping}>
-                  <FastForwardIcon className="w-6 h-6" />
-                </button>
-              </div>
-              <div className="flex items-center gap-2 w-28 justify-end">
-                {isClipping ? (
-                  <button onClick={handleSaveClip} disabled={!selectedRegion || disabled} title="保存剪辑" className="px-3 py-1.5 text-sm font-semibold rounded-md text-white bg-brand-primary hover:bg-brand-secondary disabled:bg-base-300 disabled:text-content-200 disabled:cursor-not-allowed">
-                    保存
-                  </button>
-                ) : (
-                  <button onClick={handleToggleLoop} title="循环播放" className={`p-2 rounded-full hover:bg-base-300/50 hover:text-content-100 disabled:opacity-50 ${isLooping ? 'text-brand-primary' : 'text-content-200'}`} disabled={disabled}>
-                    <RetryIcon className="w-5 h-5" />
-                  </button>
-                )}
-                <button onClick={handleToggleClipping} title="修剪音频" className={`p-2 rounded-full hover:bg-base-300/50 hover:text-content-100 disabled:opacity-50 ${isClipping ? 'text-brand-primary bg-base-300/50' : 'text-content-200'}`} disabled={disabled}>
-                  <ScissorsIcon className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       ) : (
         <div className="text-center text-content-200">
-            <p>音频预览</p>
+            <p className="font-medium">音频预览</p>
             <p className="text-sm">上传或录制后将在此处显示</p>
         </div>
       )}

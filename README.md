@@ -8,11 +8,12 @@
 
 ## 📸 应用截图
 
-<img width="1001" height="1089" alt="PixPin_2025-09-10_23-29-29" src="https://github.com/user-attachments/assets/c8cf99e0-d3d6-4713-9611-1a834a75f4de" />
+<img width="1277" height="1252" alt="image" src="https://github.com/user-attachments/assets/cb26576a-2761-41a1-88dd-417213ac8964" />
 
 
 
-<img width="514" height="110" alt="PixPin_2025-09-10_23-29-50" src="https://github.com/user-attachments/assets/914e8bba-b840-48ff-b12d-d2dbdadfa084" />
+
+<img width="1277" height="1252" alt="image" src="https://github.com/user-attachments/assets/4d7452cd-8631-4f07-81f4-e86b7ad5bf15" />
 
 
 

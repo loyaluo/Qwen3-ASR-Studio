@@ -26,7 +26,6 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
     const [status, setStatus] = useState<Status>('idle');
     const [message, setMessage] = useState<string>('');
     const inputRef = useRef<HTMLInputElement>(null);
-    const isSpaceDownRef = useRef(false);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -85,9 +84,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
         }
     }, []);
 
-    const startRecording = useCallback(async () => {
-        if (status === 'recording') return;
-
+    const startRecording = async () => {
         setMessage('正在聆听...');
         setStatus('recording');
         try {
@@ -132,40 +129,8 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
             setMessage("麦克风访问被拒绝");
             setStatus('error');
         }
-    }, [status, selectedDeviceId, handleTranscription]);
+    };
     
-    useEffect(() => {
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.code !== 'Space' || isSpaceDownRef.current) {
-                return;
-            }
-            if (status === 'idle' || status === 'success' || status === 'error') {
-                event.preventDefault();
-                isSpaceDownRef.current = true;
-                startRecording();
-            }
-        };
-
-        const handleKeyUp = (event: KeyboardEvent) => {
-            if (event.code !== 'Space' || !isSpaceDownRef.current) {
-                return;
-            }
-            event.preventDefault();
-            isSpaceDownRef.current = false;
-            if (status === 'recording') {
-                stopRecording();
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('keyup', handleKeyUp);
-
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('keyup', handleKeyUp);
-        };
-    }, [status, startRecording, stopRecording]);
-
     const handleClick = () => {
         if (status === 'recording') {
             stopRecording();
@@ -260,7 +225,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
                 type="text"
                 readOnly
                 value={message}
-                placeholder='点击或按空格开始录音'
+                placeholder='点击开始录音'
                 className={`ml-4 text-2xl font-semibold bg-transparent border-none focus:ring-0 p-0 w-full placeholder-content-200 ${status === 'success' || status === 'error' ? 'text-content-100' : 'text-content-200'}`}
             />
         </div>

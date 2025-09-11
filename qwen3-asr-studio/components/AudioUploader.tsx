@@ -43,8 +43,8 @@ export const AudioUploader = forwardRef<AudioUploaderHandle, AudioUploaderProps>
   
   return (
     <div className="p-4 rounded-lg bg-base-200 border border-base-300">
-      {/* Tab switcher for narrow screens */}
-      <div className="md:hidden" role="tablist" aria-label="Audio input method">
+      {/* Tab switcher */}
+      <div role="tablist" aria-label="Audio input method">
         <div className="flex -mx-4 -mt-4 mb-4 border-b border-base-300">
           <button
             onClick={() => setActiveTab('record')}
@@ -67,23 +67,17 @@ export const AudioUploader = forwardRef<AudioUploaderHandle, AudioUploaderProps>
         </div>
       </div>
     
-      <div className="space-y-4">
-        <div className={activeTab === 'upload' ? 'block' : 'hidden md:block'} role="tabpanel">
+      <div>
+        <div className={activeTab === 'upload' ? 'block' : 'hidden'} role="tabpanel">
           <FileUpload 
             ref={uploaderRef}
             onFileSelect={handleFileSelect} 
             disabled={disabled} 
           />
         </div>
-
-        <div className="relative items-center hidden md:flex">
-            <div className="flex-grow border-t border-base-300"></div>
-            <span className="flex-shrink mx-4 text-content-200">或</span>
-            <div className="flex-grow border-t border-base-300"></div>
-        </div>
         
-        <div className={activeTab === 'record' ? 'block' : 'hidden md:block'} role="tabpanel">
-          <div className="relative flex flex-col items-center justify-center w-full text-center transition-all duration-300 md:p-6 md:border-2 md:border-dashed md:rounded-lg md:border-base-300">
+        <div className={activeTab === 'record' ? 'block' : 'hidden'} role="tabpanel">
+          <div className="relative flex flex-col items-center justify-center w-full text-center transition-all duration-300">
             <AudioRecorder 
               ref={recorderRef}
               onFileChange={onFileChange}

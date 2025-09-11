@@ -671,7 +671,7 @@ export default function App() {
     <div className="min-h-screen bg-base-100 text-content-100 font-sans p-3 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
         <Header onSettingsClick={() => setIsSettingsOpen(true)} onPipClick={togglePip} />
-        <main className="mt-8">
+        <main className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             
             <div className="md:col-start-1 md:row-start-1">

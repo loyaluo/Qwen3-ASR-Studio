@@ -45,61 +45,65 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ items, onDelete, onResto
   return (
     <div className="p-4 rounded-lg bg-base-200 border border-base-300">
       <h3 className="text-lg font-semibold text-content-100 mb-4">笔记</h3>
-      {items.length === 0 ? (
-        <p className="text-center text-content-200">笔记列表为空。</p>
-      ) : (
-        <div className="space-y-3 max-h-80 md:max-h-96 overflow-y-auto pr-2">
-          {items.map((item) => (
-            <div key={item.id} className="p-3 rounded-md bg-base-100 border border-base-300">
-              <p className="text-sm text-content-100 break-words mb-2">
-                {item.content.length > 80 ? `${item.content.substring(0, 80)}...` : item.content || '（空笔记）'}
-              </p>
-              <div className="flex items-center justify-between text-xs text-content-200">
-                <div className="flex flex-col gap-1 min-w-0">
-                  <span>{formatTimestamp(item.timestamp)}</span>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                  <button
-                    onClick={() => onRestore(item)}
-                    disabled={disabled}
-                    title="恢复"
-                    aria-label="恢复此笔记"
-                    className="p-1 rounded-full text-content-200 hover:bg-base-300/50 hover:text-content-100 disabled:opacity-50"
-                  >
-                    <RestoreIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleCopy(item)}
-                    disabled={disabled || !item.content}
-                    title={copiedId === item.id ? "已复制" : "复制"}
-                    aria-label="复制笔记内容"
-                    className={`p-1 rounded-full transition-colors duration-200 disabled:opacity-50 ${
-                      copiedId === item.id
-                        ? 'text-brand-primary'
-                        : 'text-content-200 hover:bg-base-300/50 hover:text-content-100'
-                    }`}
-                  >
-                    {copiedId === item.id ? (
-                      <CheckIcon className="w-4 h-4" />
-                    ) : (
-                      <CopyIcon className="w-4 h-4" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => onDelete(item.id)}
-                    disabled={disabled}
-                    title="删除"
-                    aria-label="删除此笔记"
-                    className="p-1 rounded-full text-red-500 hover:bg-red-500/10 disabled:opacity-50"
-                  >
-                    <DeleteIcon className="w-4 h-4" />
-                  </button>
+      <div className="h-80 md:h-96">
+        {items.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-center text-content-200">笔记列表为空。</p>
+          </div>
+        ) : (
+          <div className="space-y-3 h-full overflow-y-auto pr-2">
+            {items.map((item) => (
+              <div key={item.id} className="p-3 rounded-md bg-base-100 border border-base-300">
+                <p className="text-sm text-content-100 break-words mb-2">
+                  {item.content.length > 80 ? `${item.content.substring(0, 80)}...` : item.content || '（空笔记）'}
+                </p>
+                <div className="flex items-center justify-between text-xs text-content-200">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span>{formatTimestamp(item.timestamp)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                    <button
+                      onClick={() => onRestore(item)}
+                      disabled={disabled}
+                      title="恢复"
+                      aria-label="恢复此笔记"
+                      className="p-1 rounded-full text-content-200 hover:bg-base-300/50 hover:text-content-100 disabled:opacity-50"
+                    >
+                      <RestoreIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleCopy(item)}
+                      disabled={disabled || !item.content}
+                      title={copiedId === item.id ? "已复制" : "复制"}
+                      aria-label="复制笔记内容"
+                      className={`p-1 rounded-full transition-colors duration-200 disabled:opacity-50 ${
+                        copiedId === item.id
+                          ? 'text-brand-primary'
+                          : 'text-content-200 hover:bg-base-300/50 hover:text-content-100'
+                      }`}
+                    >
+                      {copiedId === item.id ? (
+                        <CheckIcon className="w-4 h-4" />
+                      ) : (
+                        <CopyIcon className="w-4 h-4" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => onDelete(item.id)}
+                      disabled={disabled}
+                      title="删除"
+                      aria-label="删除此笔记"
+                      className="p-1 rounded-full text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                    >
+                      <DeleteIcon className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

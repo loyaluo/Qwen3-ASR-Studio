@@ -90,6 +90,9 @@ export default function App() {
       ? savedLevel
       : CompressionLevel.ORIGINAL; // Default to original
   });
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>(() => localStorage.getItem('selectedDeviceId') || 'default');
+
 
   // PWA install state
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -122,6 +125,29 @@ export default function App() {
         });
       });
     }
+  }, []);
+
+  // Enumerate audio devices
+  useEffect(() => {
+    const getAudioDevices = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        console.warn("enumerateDevices() not supported.");
+        return;
+      }
+      try {
+        // Request permission first to get device labels, otherwise they are blank.
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Stop the tracks immediately after getting permission.
+        stream.getTracks().forEach(track => track.stop());
+        
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
+        setAudioDevices(audioInputDevices);
+      } catch (err) {
+        console.error("Could not enumerate audio devices or get microphone permission:", err);
+      }
+    };
+    getAudioDevices();
   }, []);
   
   const handleInstallApp = () => {
@@ -228,6 +254,10 @@ export default function App() {
   }, [enableItn]);
 
   useEffect(() => {
+    localStorage.setItem('selectedDeviceId', selectedDeviceId);
+  }, [selectedDeviceId]);
+
+  useEffect(() => {
     if (copied) {
       const timer = setTimeout(() => setCopied(false), 2000);
       return () => clearTimeout(timer);
@@ -251,15 +281,9 @@ export default function App() {
       setDetectedLanguage('');
     }
 
-    // Show notification based on copy success
+    // Show notification for success
     if (result.transcription) {
-      try {
-        await navigator.clipboard.writeText(result.transcription);
-        setNotification({ message: '输入法模式识别结果已复制', type: 'success' });
-      } catch (copyError) {
-        console.error('Failed to copy text from main window:', copyError);
-        setNotification({ message: '识别成功，但自动复制失败', type: 'error' });
-      }
+      setNotification({ message: '输入法模式识别成功', type: 'success' });
     }
 
     // Add to history
@@ -731,6 +755,7 @@ export default function App() {
                 disabled={isLoading}
                 onRecordingError={handleError}
                 theme={theme}
+                selectedDeviceId={selectedDeviceId}
               />
             </div>
 
@@ -776,6 +801,9 @@ export default function App() {
         setEnableItn={setEnableItn}
         compressionLevel={compressionLevel}
         setCompressionLevel={setCompressionLevel}
+        audioDevices={audioDevices}
+        selectedDeviceId={selectedDeviceId}
+        setSelectedDeviceId={setSelectedDeviceId}
         onClearHistory={handleClearHistory}
         canInstall={!!installPrompt}
         onInstallApp={handleInstallApp}
@@ -788,6 +816,7 @@ export default function App() {
           context={context}
           language={language}
           enableItn={enableItn}
+          selectedDeviceId={selectedDeviceId}
         />,
         pipContainer
       )}

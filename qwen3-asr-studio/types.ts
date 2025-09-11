@@ -1,12 +1,16 @@
 export enum Language {
   AUTO = "auto",
-  ENGLISH = "en",
   CHINESE = "zh",
+  ENGLISH = "en",
   JAPANESE = "ja",
   KOREAN = "ko",
+  SPANISH = "es",
   FRENCH = "fr",
   GERMAN = "de",
-  SPANISH = "es",
+  ARABIC = "ar",
+  ITALIAN = "it",
+  RUSSIAN = "ru",
+  PORTUGUESE = "pt",
 }
 
 export enum CompressionLevel {

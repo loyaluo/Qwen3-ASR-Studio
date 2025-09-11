@@ -11,6 +11,7 @@ interface AudioUploaderProps {
   disabled?: boolean;
   onRecordingError: (message: string) => void;
   theme: 'light' | 'dark';
+  selectedDeviceId: string;
 }
 
 export interface AudioUploaderHandle {
@@ -19,7 +20,7 @@ export interface AudioUploaderHandle {
   clearInput: () => void;
 }
 
-export const AudioUploader = forwardRef<AudioUploaderHandle, AudioUploaderProps>(({ onFileChange, onRecordingChange, disabled, onRecordingError, theme }, ref) => {
+export const AudioUploader = forwardRef<AudioUploaderHandle, AudioUploaderProps>(({ onFileChange, onRecordingChange, disabled, onRecordingError, theme, selectedDeviceId }, ref) => {
   const [activeTab, setActiveTab] = useState<'upload' | 'record'>('record');
   const recorderRef = useRef<AudioRecorderHandle>(null);
   const uploaderRef = useRef<FileUploadHandle>(null);
@@ -90,6 +91,7 @@ export const AudioUploader = forwardRef<AudioUploaderHandle, AudioUploaderProps>
               disabled={disabled}
               onRecordingError={onRecordingError}
               theme={theme}
+              selectedDeviceId={selectedDeviceId}
             />
           </div>
         </div>

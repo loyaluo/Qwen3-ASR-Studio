@@ -12,14 +12,18 @@ interface OptionsPanelProps {
 }
 
 const languageDisplayNames: Record<Language, string> = {
-  [Language.AUTO]: "自动检测",
-  [Language.ENGLISH]: "英语 (en)",
-  [Language.CHINESE]: "中文 (zh)",
-  [Language.JAPANESE]: "日语 (ja)",
-  [Language.KOREAN]: "韩语 (ko)",
-  [Language.FRENCH]: "法语 (fr)",
-  [Language.GERMAN]: "德语 (de)",
-  [Language.SPANISH]: "西班牙语 (es)",
+  [Language.AUTO]: "🌐 自动识别 / Auto Detect",
+  [Language.CHINESE]: "🇨🇳 中文 / Chinese",
+  [Language.ENGLISH]: "🇺🇸 英文 / English",
+  [Language.JAPANESE]: "🇯🇵 日文 / Japanese",
+  [Language.KOREAN]: "🇰🇷 韩文 / Korean",
+  [Language.SPANISH]: "🇪🇸 西班牙文 / Spanish",
+  [Language.FRENCH]: "🇫🇷 法文 / French",
+  [Language.GERMAN]: "🇩🇪 德文 / German",
+  [Language.ARABIC]: "🇸🇦 阿拉伯文 / Arabic",
+  [Language.ITALIAN]: "🇮🇹 意大利文 / Italian",
+  [Language.RUSSIAN]: "🇷🇺 俄文 / Russian",
+  [Language.PORTUGUESE]: "🇵🇹 葡萄牙文 / Portuguese",
 };
 
 export const OptionsPanel: React.FC<OptionsPanelProps> = ({

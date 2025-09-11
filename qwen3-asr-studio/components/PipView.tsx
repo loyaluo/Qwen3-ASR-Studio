@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { transcribeAudio } from '../services/gradioService';
 import { Language } from '../types';
@@ -17,9 +18,10 @@ interface PipViewProps {
   context: string;
   language: Language;
   enableItn: boolean;
+  selectedDeviceId: string;
 }
 
-export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, context, language, enableItn }) => {
+export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, context, language, enableItn, selectedDeviceId }) => {
     type Status = 'idle' | 'recording' | 'processing' | 'success' | 'error';
     const [status, setStatus] = useState<Status>('idle');
     const [message, setMessage] = useState<string>('');
@@ -27,6 +29,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
+    const isSpaceDown = useRef(false);
 
     useEffect(() => {
         if (status === 'success' && inputRef.current) {
@@ -82,12 +85,13 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
         }
     }, []);
 
-    const startRecording = async () => {
+    const startRecording = useCallback(async () => {
         setMessage('正在聆听...');
         setStatus('recording');
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
+                    deviceId: selectedDeviceId === 'default' ? undefined : { exact: selectedDeviceId },
                     echoCancellation: false,
                     noiseSuppression: false,
                     autoGainControl: false,
@@ -126,8 +130,43 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
             setMessage("麦克风访问被拒绝");
             setStatus('error');
         }
-    };
+    }, [selectedDeviceId, handleTranscription]);
     
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.code !== 'Space' || isSpaceDown.current || status === 'processing') {
+                return;
+            }
+            event.preventDefault();
+
+            if (status === 'idle' || status === 'success' || status === 'error') {
+                isSpaceDown.current = true;
+                startRecording();
+            }
+        };
+
+        const handleKeyUp = (event: KeyboardEvent) => {
+            if (event.code !== 'Space' || !isSpaceDown.current) {
+                return;
+            }
+            event.preventDefault();
+            isSpaceDown.current = false;
+
+            if (status === 'recording') {
+                stopRecording();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, [status, startRecording, stopRecording]);
+
+
     const handleClick = () => {
         if (status === 'recording') {
             stopRecording();
@@ -222,7 +261,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
                 type="text"
                 readOnly
                 value={message}
-                placeholder='点击开始录音'
+                placeholder='按住空格或点击录音'
                 className={`ml-4 text-2xl font-semibold bg-transparent border-none focus:ring-0 p-0 w-full placeholder-content-200 ${status === 'success' || status === 'error' ? 'text-content-100' : 'text-content-200'}`}
             />
         </div>

@@ -18,6 +18,9 @@ interface SettingsPanelProps {
   setEnableItn: (enable: boolean) => void;
   compressionLevel: CompressionLevel;
   setCompressionLevel: (level: CompressionLevel) => void;
+  audioDevices: MediaDeviceInfo[];
+  selectedDeviceId: string;
+  setSelectedDeviceId: (deviceId: string) => void;
   onClearHistory: () => void;
   disabled?: boolean;
   canInstall: boolean;
@@ -45,14 +48,18 @@ const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) =>
 }
 
 const languageDisplayNames: Record<Language, string> = {
-  [Language.AUTO]: "自动检测",
-  [Language.ENGLISH]: "英语 (en)",
-  [Language.CHINESE]: "中文 (zh)",
-  [Language.JAPANESE]: "日语 (ja)",
-  [Language.KOREAN]: "韩语 (ko)",
-  [Language.FRENCH]: "法语 (fr)",
-  [Language.GERMAN]: "德语 (de)",
-  [Language.SPANISH]: "西班牙语 (es)",
+  [Language.AUTO]: "🌐 自动识别 / Auto Detect",
+  [Language.CHINESE]: "🇨🇳 中文 / Chinese",
+  [Language.ENGLISH]: "🇺🇸 英文 / English",
+  [Language.JAPANESE]: "🇯🇵 日文 / Japanese",
+  [Language.KOREAN]: "🇰🇷 韩文 / Korean",
+  [Language.SPANISH]: "🇪🇸 西班牙文 / Spanish",
+  [Language.FRENCH]: "🇫🇷 法文 / French",
+  [Language.GERMAN]: "🇩🇪 德文 / German",
+  [Language.ARABIC]: "🇸🇦 阿拉伯文 / Arabic",
+  [Language.ITALIAN]: "🇮🇹 意大利文 / Italian",
+  [Language.RUSSIAN]: "🇷🇺 俄文 / Russian",
+  [Language.PORTUGUESE]: "🇵🇹 葡萄牙文 / Portuguese",
 };
 
 const compressionLevelDisplayNames: Record<CompressionLevel, string> = {
@@ -76,6 +83,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setEnableItn,
   compressionLevel,
   setCompressionLevel,
+  audioDevices,
+  selectedDeviceId,
+  setSelectedDeviceId,
   onClearHistory,
   disabled,
   canInstall,
@@ -220,6 +230,26 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </div>
 
                 <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <label htmlFor="audio-device-setting" className="text-base font-medium">
+                    录音设备
+                  </label>
+                  <select
+                    id="audio-device-setting"
+                    value={selectedDeviceId}
+                    onChange={(e) => setSelectedDeviceId(e.target.value)}
+                    disabled={disabled || audioDevices.length === 0}
+                    className="w-full sm:w-48 px-3 py-2 text-sm rounded-md shadow-sm bg-base-100 border border-base-300 text-content-100 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary disabled:opacity-60"
+                  >
+                    <option value="default">默认设备</option>
+                    {audioDevices.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {device.label || `设备 ${device.deviceId.substring(0, 8)}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <label htmlFor="itn-setting" className="text-base font-medium flex-1">
                     启用反向文本标准化 (ITN)
                   </label>
@@ -260,7 +290,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <div className="border-t border-base-300"></div>
 
             <div>
-              <h3 className="text-lg font-semibold text-content-100">关于</h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-content-100">关于</h3>
+                <span className="text-xs font-mono text-content-200 bg-base-100 px-2 py-1 rounded-md">v1.0.0</span>
+              </div>
               <p className="text-sm text-content-200 mt-2">
                 您可以在 GitHub 上找到此项目的源代码。
               </p>

@@ -10,6 +10,7 @@ interface AudioRecorderProps {
   disabled?: boolean;
   onRecordingError: (message: string) => void;
   theme: 'light' | 'dark';
+  selectedDeviceId: string;
 }
 
 export interface AudioRecorderHandle {
@@ -23,7 +24,7 @@ const formatTime = (timeInSeconds: number) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>(({ onFileChange, onRecordingChange, disabled, onRecordingError, theme }, ref) => {
+export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>(({ onFileChange, onRecordingChange, disabled, onRecordingError, theme, selectedDeviceId }, ref) => {
   const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording'>('idle');
   const [recordingTime, setRecordingTime] = useState(0);
 
@@ -55,7 +56,6 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
       canvas.height = parent.clientHeight;
     }
     
-    // The parent div has the correct background color, so we just clear the canvas.
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     const computedStyle = getComputedStyle(canvas);
@@ -117,8 +117,7 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
             const strokeColor = computedStyle.getPropertyValue('--color-brand-primary').trim() || '#10b981';
 
             analyser.getByteTimeDomainData(dataArray);
-
-            // The parent div has the correct background color, so we just clear the canvas.
+            
             context.clearRect(0, 0, canvas.width, canvas.height);
 
             context.lineWidth = 2.5;
@@ -187,13 +186,13 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: {
+            deviceId: selectedDeviceId === 'default' ? undefined : { exact: selectedDeviceId },
             echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false,
           }
         });
         
-        // Setup Web Audio API for visualization
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         audioContextRef.current = audioContext;
         
@@ -234,12 +233,11 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
             const formattedDate = `${year}-${month}-${day}_${hours}-${minutes}`;
             const audioFile = new File([audioBlob], `recording-${formattedDate}.${fileExtension}`, { type: mimeType });
             
-            // Cache the recording, but proceed with UI update regardless of cache success
             setCachedRecording(audioFile).catch(err => {
               console.error("Failed to cache recording:", err);
             });
 
-            onFileChange(audioFile); // Update UI immediately
+            onFileChange(audioFile);
 
             audioChunksRef.current = [];
             stream.getTracks().forEach(track => track.stop());

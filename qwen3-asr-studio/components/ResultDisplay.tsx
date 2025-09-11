@@ -83,47 +83,50 @@ export const ResultDisplay = forwardRef<ResultDisplayHandle, ResultDisplayProps>
     const hasResult = transcription || (detectedLanguage && transcriptionMode === 'single');
 
     return (
-      <div className="flex flex-col rounded-lg bg-base-200 border border-base-300 flex-grow">
+      <div className="flex flex-col rounded-lg bg-base-200 border border-base-300 flex-grow min-h-[250px] md:min-h-0 shadow-sm">
         <div className="flex items-center justify-between p-2 border-b border-base-300">
-          <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-base-300">
+          <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-base-200">
             <button
               onClick={() => onModeChange('single')}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                transcriptionMode === 'single' ? 'bg-brand-primary text-white' : 'hover:bg-base-200'
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                transcriptionMode === 'single' ? 'bg-brand-primary text-white shadow' : 'text-content-200 hover:bg-base-300'
               }`}
             >
               单次模式
             </button>
             <button
               onClick={() => onModeChange('notes')}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                transcriptionMode === 'notes' ? 'bg-brand-primary text-white' : 'hover:bg-base-200'
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                transcriptionMode === 'notes' ? 'bg-brand-primary text-white shadow' : 'text-content-200 hover:bg-base-300'
               }`}
             >
               笔记模式
             </button>
           </div>
-          {transcriptionMode === 'single' && detectedLanguage && !isLoading && (
-            <div className="flex items-center gap-2 px-2 text-sm text-content-200">
-                <LanguageIcon className="w-5 h-5 text-brand-primary" />
-                <span>识别语言: <strong>{detectedLanguage}</strong></span>
-            </div>
-          )}
-          {transcriptionMode === 'notes' && !isLoading && (
-            <button
-              onClick={onSaveNote}
-              disabled={!transcription.trim()}
-              title="保存笔记"
-              className="px-3 py-1 text-sm font-medium rounded-md transition-colors bg-base-100 border border-base-300 text-content-100 hover:bg-brand-primary hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              保存
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {transcriptionMode === 'single' && detectedLanguage && !isLoading && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-base-100 text-content-200 border border-base-300">
+                <LanguageIcon className="w-4 h-4 text-brand-primary" />
+                <span>{detectedLanguage}</span>
+              </div>
+            )}
+            {transcriptionMode === 'notes' && !isLoading && (
+              <button
+                onClick={onSaveNote}
+                disabled={!transcription.trim()}
+                title="保存笔记"
+                className="px-4 py-1.5 text-sm font-semibold rounded-md transition-colors bg-brand-primary text-white hover:bg-brand-secondary disabled:bg-base-300 disabled:text-content-200 disabled:cursor-not-allowed"
+              >
+                保存
+              </button>
+            )}
+          </div>
         </div>
-        <div className="relative p-4 rounded-b-lg bg-base-100 flex-grow overflow-y-auto h-32 md:h-auto">
+        <div className="relative p-5 rounded-b-lg bg-base-100 flex-grow overflow-y-auto">
           {isLoading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center h-full text-center bg-base-100 bg-opacity-90 z-10">
-              <LoaderIcon color="#10b981" className="h-10" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center h-full text-center bg-base-100/80 backdrop-blur-sm z-10">
+              <LoaderIcon color="var(--color-brand-primary)" className="h-10" />
+              <p className="mt-4 text-content-200">{loadingStatus || loadingMessage}</p>
             </div>
           )}
 
@@ -133,19 +136,23 @@ export const ResultDisplay = forwardRef<ResultDisplayHandle, ResultDisplayProps>
               value={transcription}
               onChange={(e) => setTranscription(e.target.value)}
               placeholder="识别结果将显示并可在此处编辑..."
-              className="w-full h-full bg-transparent resize-none focus:outline-none text-content-100"
+              className="w-full h-full min-h-[150px] md:min-h-full bg-transparent resize-none focus:outline-none text-content-100 text-base leading-relaxed placeholder:text-content-200"
               aria-label="识别结果笔记"
               disabled={isLoading}
             />
           ) : (
-            !isLoading && (
+             !isLoading && (
               hasResult ? (
-                <div>
-                  <p className="text-content-100 whitespace-pre-wrap">{transcription}</p>
+                <div className="text-content-100 whitespace-pre-wrap text-base leading-relaxed">
+                  {transcription}
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-content-200">识别结果将显示在这里。</p>
+                <div className="flex flex-col items-center justify-center h-full min-h-[150px] md:min-h-full">
+                  <div className="w-16 h-16 flex items-center justify-center bg-base-200 rounded-full">
+                      <LanguageIcon className="w-8 h-8 text-base-300"/>
+                  </div>
+                  <p className="mt-4 font-medium text-content-200">识别结果将显示在这里</p>
+                  <p className="text-sm text-content-200">上传或录制音频后开始</p>
                 </div>
               )
             )

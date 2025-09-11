@@ -1,6 +1,5 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { Header } from './components/Header';
 import { AudioUploader, type AudioUploaderHandle } from './components/AudioUploader';
 import { ResultDisplay, type ResultDisplayHandle } from './components/ResultDisplay';
@@ -16,7 +15,6 @@ import { AudioPreview } from './components/AudioPreview';
 import { HistoryPanel } from './components/HistoryPanel';
 import { NotesPanel } from './components/NotesPanel';
 import { RetryIcon } from './components/icons/RetryIcon';
-import { PipView } from './components/PipView';
 import { StopIcon } from './components/icons/StopIcon';
 import { CopyIcon } from './components/icons/CopyIcon';
 import { CheckIcon } from './components/icons/CheckIcon';
@@ -64,7 +62,6 @@ export default function App() {
   const [transcribeAfterRecording, setTranscribeAfterRecording] = useState<boolean>(false);
   const audioUploaderRef = useRef<AudioUploaderHandle>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const isSpaceDown = useRef(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [copied, setCopied] = useState(false);
@@ -96,11 +93,6 @@ export default function App() {
 
   // PWA install state
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-
-  // PiP State
-  const [pipWindow, setPipWindow] = useState<Window | null>(null);
-  const [pipContainer, setPipContainer] = useState<HTMLElement | null>(null);
-  const isPipActive = !!pipWindow;
 
   // PWA install prompt handler
   useEffect(() => {
@@ -263,116 +255,6 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [copied]);
-
-  const handleTranscriptionResultFromPip = useCallback(async (result: {
-    transcription: string;
-    detectedLanguage: string;
-    audioFile: File;
-  }) => {
-    // Sync state with main page
-    setAudioFile(result.audioFile);
-    
-    if (transcriptionMode === 'single') {
-      setTranscription(result.transcription);
-      setDetectedLanguage(result.detectedLanguage);
-    } else {
-      const prefix = transcription.length > 0 && !/[\s\n]$/.test(transcription) ? ' ' : '';
-      resultDisplayRef.current?.insertText(prefix + result.transcription);
-      setDetectedLanguage('');
-    }
-
-    // Show notification for success
-    if (result.transcription) {
-      setNotification({ message: '输入法模式识别成功', type: 'success' });
-    }
-
-    // Add to history
-    if (result.transcription) {
-      const newHistoryItem: HistoryItem = {
-        id: Date.now(),
-        fileName: result.audioFile.name,
-        transcription: result.transcription,
-        detectedLanguage: result.detectedLanguage,
-        context,
-        timestamp: Date.now(),
-        audioFile: result.audioFile,
-      };
-
-      const saveHistory = async () => {
-        try {
-          await addHistoryItem(newHistoryItem);
-          setHistory(prevHistory => [newHistoryItem, ...prevHistory]);
-        } catch (historyError) {
-          console.error("Failed to save history item from PiP:", historyError);
-        }
-      };
-      saveHistory();
-    }
-  }, [context, transcriptionMode, transcription]);
-
-  const closePip = useCallback(() => {
-    if (pipWindow) {
-      pipWindow.close();
-      // The 'pagehide' listener will handle state cleanup
-    }
-  }, [pipWindow]);
-
-  const openPip = useCallback(async () => {
-    if (!('documentPictureInPicture' in window)) {
-      handleError('您的浏览器不支持此功能。请使用最新版本的 Chrome 或 Edge 浏览器。');
-      return;
-    }
-    if (isPipActive) return;
-
-    try {
-      const pipWin = await window.documentPictureInPicture!.requestWindow({
-        width: 480,
-        height: 70,
-      });
-
-      // Copy all styles from the main document to the PiP window.
-      Array.from(document.querySelectorAll('style, link[rel="stylesheet"]')).forEach(node => {
-        pipWin.document.head.appendChild(node.cloneNode(true));
-      });
-      // Copy all scripts from the main document's head to ensure JS/Tailwind works.
-      Array.from(document.head.querySelectorAll('script')).forEach(script => {
-        const newScript = pipWin.document.createElement('script');
-        if (script.src) newScript.src = script.src;
-        newScript.textContent = script.textContent;
-        pipWin.document.head.appendChild(newScript);
-      });
-
-      pipWin.document.title = "输入法模式 - Qwen3-ASR";
-      pipWin.document.documentElement.className = document.documentElement.className; // Copy theme class
-      pipWin.document.body.style.margin = '0';
-      pipWin.document.body.style.overflow = 'hidden';
-
-      const container = pipWin.document.createElement('div');
-      container.id = 'pip-root';
-      container.style.height = '100vh';
-      pipWin.document.body.appendChild(container);
-
-      pipWin.addEventListener('pagehide', () => {
-        setPipWindow(null);
-        setPipContainer(null);
-      }, { once: true });
-
-      setPipWindow(pipWin);
-      setPipContainer(container);
-
-    } catch (error) {
-      console.error('Failed to open document PiP window:', error);
-      handleError('打开画中画窗口失败。用户可能已拒绝请求。');
-    }
-  }, [isPipActive, handleError]);
-
-  const togglePip = useCallback(() => {
-    if (isPipActive) {
-      closePip();
-    } else {
-      openPip();
-    }
-  }, [isPipActive, closePip, openPip]);
 
   const handleFileChange = (file: File | null) => {
     setAudioFile(file);
@@ -543,54 +425,6 @@ export default function App() {
     }
   }, [transcribeAfterRecording, audioFile, isRecording, transcribeNow]);
 
-  useEffect(() => {
-    // If PiP is active, its own event listeners will handle spacebar.
-    // Disable main window listeners to prevent conflicts.
-    if (isPipActive) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code !== 'Space' || isSpaceDown.current || isSettingsOpen) {
-        return;
-      }
-
-      const target = event.target as HTMLElement;
-      if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(target.tagName) || target.isContentEditable) {
-        return;
-      }
-      
-      event.preventDefault();
-
-      if (!isRecording && !isLoading) {
-        isSpaceDown.current = true;
-        audioUploaderRef.current?.startRecording();
-      }
-    };
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.code !== 'Space' || !isSpaceDown.current) {
-        return;
-      }
-      
-      event.preventDefault();
-      isSpaceDown.current = false;
-
-      if (isRecording) {
-        handleTranscribe();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [isPipActive, isRecording, isLoading, handleTranscribe, isSettingsOpen]);
-
-
   const handleDeleteHistory = async (id: number) => {
     try {
       await deleteHistoryItem(id);
@@ -676,7 +510,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-base-100 text-content-100 font-sans p-3 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
-        <Header onSettingsClick={() => setIsSettingsOpen(true)} onPipClick={togglePip} />
+        <Header onSettingsClick={() => setIsSettingsOpen(true)} />
         <main className="mt-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             
@@ -815,17 +649,6 @@ export default function App() {
         onInstallApp={handleInstallApp}
         disabled={isLoading}
       />
-       {isPipActive && pipContainer && createPortal(
-        <PipView
-          onTranscriptionResult={handleTranscriptionResultFromPip}
-          theme={theme}
-          context={context}
-          language={language}
-          enableItn={enableItn}
-          selectedDeviceId={selectedDeviceId}
-        />,
-        pipContainer
-      )}
     </div>
   );
 }

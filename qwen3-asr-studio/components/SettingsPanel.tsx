@@ -224,4 +224,109 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 上下文 (可选)
                 <p className="text-sm text-content-200 font-normal">提供上下文以提高准确性，例如：人名、术语。</p>
               </label>
-              <textarea id="context-setting" rows
+              <textarea id="context-setting" rows={3} value={context} onChange={(e) => setContext(e.target.value)} disabled={disabled} placeholder="人名、术语等..." className="mt-2 w-full px-3 py-2 text-sm rounded-md shadow-sm bg-base-100 border border-base-300 text-content-100 placeholder-content-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary disabled:opacity-60" />
+            </div>
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <label htmlFor="itn-setting" className="text-base font-medium flex-1">启用反向文本标准化 (ITN)</label>
+              <ToggleSwitch id="itn-setting" enabled={enableItn} onChange={setEnableItn} disabled={disabled} />
+            </div>
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <label htmlFor="audio-device-setting" className="text-base font-medium">录音设备</label>
+              <select id="audio-device-setting" value={selectedDeviceId} onChange={(e) => setSelectedDeviceId(e.target.value)} disabled={disabled || audioDevices.length === 0} className="w-full sm:w-56 px-3 py-2 text-sm rounded-md shadow-sm bg-base-100 border border-base-300 text-content-100 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary disabled:opacity-60">
+                <option value="default">默认设备</option>
+                {audioDevices.map((device) => (<option key={device.deviceId} value={device.deviceId}>{device.label || `设备 ${device.deviceId.substring(0, 8)}`}</option>))}
+              </select>
+            </div>
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <label className="text-base font-medium">
+                音频压缩
+                <p className="text-sm text-content-200 font-normal">减小文件大小以加快上传速度。</p>
+              </label>
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-base-100 border border-base-300">
+                {Object.values(CompressionLevel).map((level) => (<button key={level} onClick={() => setCompressionLevel(level)} disabled={disabled} className={`px-2 py-1 text-sm font-medium rounded-md transition-colors ${compressionLevel === level ? 'bg-brand-primary text-white' : 'hover:bg-base-300'}`}>{compressionLevelDisplayNames[level]}</button>))}
+              </div>
+            </div>
+          </div>
+        );
+      case 'about':
+        return (
+          <div className="space-y-4 flex flex-col">
+            <img 
+              src="https://modelscope.oss-cn-beijing.aliyuncs.com/resource/00EE8C99-9C05-4236-A6D0-B58FF172D31B.png"
+              alt="Qwen3 ASR Studio Logo"
+              className="h-16 w-auto mx-auto mb-2" 
+            />
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-content-100">关于 Qwen3-ASR Studio</h3>
+              <span className="text-xs font-mono text-content-200 bg-base-100 px-2 py-1 rounded-md">v1.1.0</span>
+            </div>
+            <div>
+              <p className="text-sm text-content-200">您可以在 GitHub 上找到此项目的源代码。</p>
+              <a href="https://github.com/yeahhe365/Qwen3-ASR-Studio" target="_blank" rel="noopener noreferrer" className="mt-1 text-sm text-brand-primary hover:underline block truncate">https://github.com/yeahhe365/Qwen3-ASR-Studio</a>
+            </div>
+            <div>
+              <p className="text-sm text-content-200">您可以在此处找到 ModelScope API 文档。</p>
+              <a href="https://c0rpr74ughd0-deploy.space.z.ai/" target="_blank" rel="noopener noreferrer" className="mt-1 text-sm text-brand-primary hover:underline block truncate">https://c0rpr74ughd0-deploy.space.z.ai/</a>
+            </div>
+            <div>
+              <p className="text-sm text-content-200">您可以在此处找到阿里云百炼 API 文档。</p>
+              <a href="https://r0vrc7kjd4q0-deploy.space.z.ai/" target="_blank" rel="noopener noreferrer" className="mt-1 text-sm text-brand-primary hover:underline block truncate">https://r0vrc7kjd4q0-deploy.space.z.ai/</a>
+            </div>
+          </div>
+        );
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50" aria-labelledby="settings-title" role="dialog" aria-modal="true">
+      <div className="fixed inset-0 bg-black bg-opacity-60 transition-opacity" aria-hidden="true" onClick={onClose}></div>
+      <div className="flex items-center justify-center min-h-full p-4">
+        <div className="relative w-full max-w-lg bg-base-200 text-content-100 rounded-lg shadow-xl border border-base-300 transform transition-all max-h-[90vh] flex flex-col">
+          <div className="flex-shrink-0 flex items-center justify-between p-8 pb-4 bg-base-200">
+            <h2 id="settings-title" className="text-xl font-bold">设置</h2>
+            <button onClick={onClose} aria-label="关闭设置" className="p-1 rounded-full text-content-200 hover:bg-base-300 hover:text-content-100 transition-colors">
+              <CloseIcon className="w-6 h-6" />
+            </button>
+          </div>
+          <div className="flex-shrink-0 border-b border-base-300">
+            <nav className="flex space-x-2 px-8" role="tablist" aria-label="设置">
+              <TabButton tabName="general" label="常规" />
+              <TabButton tabName="transcription" label="转录" />
+              <TabButton tabName="about" label="关于" />
+            </nav>
+          </div>
+          <div className="flex-grow p-8 overflow-y-auto h-[600px]" role="tabpanel">
+            {renderTabContent()}
+          </div>
+        </div>
+      </div>
+      {isConfirmingClear && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black bg-opacity-70 transition-opacity" aria-hidden="true" onClick={() => setIsConfirmingClear(false)}></div>
+            <div className="relative w-full max-w-sm p-6 bg-base-200 text-content-100 rounded-lg shadow-xl border border-base-300">
+                <h3 className="text-lg font-bold">确认清除历史记录</h3>
+                <p className="mt-2 text-sm text-content-200">您确定要清除所有识别历史记录吗？此操作无法撤销。</p>
+                <div className="mt-6 flex justify-end gap-3">
+                    <button onClick={() => setIsConfirmingClear(false)} className="px-4 py-2 text-sm font-medium rounded-md transition-colors bg-base-300 text-content-100 hover:bg-base-300/80">取消</button>
+                    <button onClick={confirmClearHistory} className="px-4 py-2 text-sm font-medium rounded-md transition-colors text-white bg-red-600 hover:bg-red-700">确认清除</button>
+                </div>
+            </div>
+        </div>
+      )}
+      {isConfirmingRestore && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black bg-opacity-70 transition-opacity" aria-hidden="true" onClick={() => setIsConfirmingRestore(false)}></div>
+            <div className="relative w-full max-w-sm p-6 bg-base-200 text-content-100 rounded-lg shadow-xl border border-base-300">
+                <h3 className="text-lg font-bold">确认恢复默认设置</h3>
+                <p className="mt-2 text-sm text-content-200">您确定要将所有设置恢复为默认值吗？此操作无法撤销。</p>
+                <div className="mt-6 flex justify-end gap-3">
+                    <button onClick={() => setIsConfirmingRestore(false)} className="px-4 py-2 text-sm font-medium rounded-md transition-colors bg-base-300 text-content-100 hover:bg-base-300/80">取消</button>
+                    <button onClick={confirmRestoreDefaults} className="px-4 py-2 text-sm font-medium rounded-md transition-colors text-white bg-brand-primary hover:bg-brand-secondary">确认恢复</button>
+                </div>
+            </div>
+        </div>
+      )}
+    </div>
+  );
+};

@@ -1,7 +1,7 @@
 
 import { Client } from "@gradio/client";
 import type { GradioClient, PredictReturn } from "@gradio/client";
-import { Language } from "../types";
+import { Language, ApiProvider } from "../types";
 
 const SPACE_ID = "Qwen/Qwen3-ASR-Demo";
 let client: Promise<GradioClient>;
@@ -15,6 +15,8 @@ async function getClient() {
 
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 2000;
+const BAILIAN_API_URL = 'https://r0vrc7kjd4q0-deploy.space.z.ai/api/proxy/transcribe';
+
 
 const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -29,8 +31,86 @@ const fileToBase64 = (file: File): Promise<string> => {
     });
 };
 
+const transcribeWithBailian = async (
+  audioFile: File,
+  context: string,
+  language: Language,
+  enableItn: boolean,
+  apiKey: string,
+  onProgress: (message: string) => void,
+  signal: AbortSignal
+): Promise<{ transcription: string; detectedLanguage: string }> => {
+  if (!apiKey) {
+    throw new Error('阿里云百炼 API Key 未设置。请在设置中配置。');
+  }
 
-export const transcribeAudio = async (
+  const formData = new FormData();
+  formData.append('audio', audioFile);
+  if (context) formData.append('context', context);
+  formData.append('enableItn', String(enableItn));
+  if (language !== Language.AUTO) {
+    formData.append('language', language);
+  }
+
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    try {
+      const attempt = i + 1;
+      onProgress(attempt > 1 ? `正在进行第 ${attempt} 次尝试...` : '正在识别，请稍候...');
+      
+      onProgress('正在发送到百炼 API...');
+      const response = await fetch(BAILIAN_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: formData,
+        signal,
+      });
+
+      if (!response.ok) {
+        let errorDetails = `API 请求失败，状态码: ${response.status}`;
+        try {
+          const errorJson = await response.json();
+          errorDetails = errorJson.details || errorJson.error || errorDetails;
+        } catch (e) {
+          // ignore if response is not json
+        }
+        throw new Error(errorDetails);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        onProgress('识别成功！');
+        return {
+          transcription: result.data.text || '',
+          detectedLanguage: result.data.language || '',
+        };
+      } else if (result.error) {
+        throw new Error(result.details || result.error);
+      } else {
+        throw new Error('来自百炼 API 的响应格式无效');
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        onProgress('识别已取消。');
+        throw error;
+      }
+      if (i === MAX_RETRIES - 1) {
+        console.error(`Transcription failed after ${MAX_RETRIES} attempts.`, error);
+        onProgress('识别失败。');
+        throw error;
+      }
+      const delay = INITIAL_BACKOFF_MS * Math.pow(2, i);
+      console.log(`Transcription attempt ${i + 1} failed. Retrying in ${delay / 1000}s...`, error);
+      onProgress(`识别出错，将在 ${delay / 1000} 秒后重试...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error('Transcription failed after all retries.');
+};
+
+const transcribeWithModelScope = async (
   audioFile: File,
   context: string,
   language: Language,
@@ -80,11 +160,9 @@ export const transcribeAudio = async (
         onProgress('识别成功！');
         
         let detectedLanguage = '';
-        const detectedLangStr = result.data[1]; // This can be null, undefined, or a string
+        const detectedLangStr = result.data[1];
 
-        // Safely process the detected language string only if it exists
         if (typeof detectedLangStr === 'string' && detectedLangStr) {
-          // Use a regex to robustly extract language, handling different colons and spacing.
           const langMatch = detectedLangStr.match(/(?:：|:)\s*(.*)/);
           detectedLanguage = langMatch ? langMatch[1].trim() : detectedLangStr.trim();
         }
@@ -101,7 +179,7 @@ export const transcribeAudio = async (
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         onProgress('识别已取消。');
-        throw error; // Re-throw to be caught by the caller and stop retries
+        throw error;
       }
       if (i === MAX_RETRIES - 1) {
         console.error(`Transcription failed after ${MAX_RETRIES} attempts.`, error);
@@ -114,14 +192,34 @@ export const transcribeAudio = async (
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  // This should not be reached.
   throw new Error('Transcription failed after all retries.');
 };
+
+export interface TranscriptionConfig {
+  provider: ApiProvider;
+  modelScopeApiUrl: string;
+  bailianApiKey: string;
+}
+
+export const transcribeAudio = async (
+  audioFile: File,
+  context: string,
+  language: Language,
+  enableItn: boolean,
+  config: TranscriptionConfig,
+  onProgress: (message: string) => void,
+  signal: AbortSignal
+): Promise<{ transcription: string; detectedLanguage: string }> => {
+  if (config.provider === ApiProvider.BAILIAN) {
+    return transcribeWithBailian(audioFile, context, language, enableItn, config.bailianApiKey, onProgress, signal);
+  } else {
+    return transcribeWithModelScope(audioFile, context, language, enableItn, config.modelScopeApiUrl, onProgress, signal);
+  }
+}
 
 interface GradioFile {
   url: string;
   orig_name: string;
-  // Other properties might exist but are not needed for this app
 }
 
 export const loadExample = async (
@@ -149,7 +247,6 @@ export const loadExample = async (
         }
         
         onProgress('正在下载示例文件...');
-        // Fetch the audio file from the URL provided by Gradio
         const response = await fetch(fileData.url);
         if (!response.ok) {
             throw new Error(`Failed to fetch example audio: ${response.statusText}`);

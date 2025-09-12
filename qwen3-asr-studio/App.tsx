@@ -6,7 +6,7 @@ import { AudioUploader, type AudioUploaderHandle } from './components/AudioUploa
 import { ResultDisplay, type ResultDisplayHandle } from './components/ResultDisplay';
 import { ExampleButtons } from './components/ExampleButtons';
 import { transcribeAudio, loadExample } from './services/gradioService';
-import { Language, CompressionLevel, HistoryItem, NoteItem } from './types';
+import { Language, CompressionLevel, HistoryItem, NoteItem, ApiProvider } from './types';
 import { Toast } from './components/Toast';
 import { LoaderIcon } from './components/icons/LoaderIcon';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -50,7 +50,7 @@ declare global {
     }
 }
 
-const DEFAULT_API_BASE_URL = 'https://c0rpr74ughd0-deploy.space.z.ai/api/asr-inference';
+const DEFAULT_MODELSCOPE_API_URL = 'https://c0rpr74ughd0-deploy.space.z.ai/api/asr-inference';
 
 export default function App() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -79,7 +79,6 @@ export default function App() {
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [autoCopy, setAutoCopy] = useState(() => {
-    // Default to true if no setting is found in localStorage
     return localStorage.getItem('autoCopy') !== 'false';
   });
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -87,17 +86,21 @@ export default function App() {
     if (savedTheme === 'light' || savedTheme === 'dark') {
       return savedTheme;
     }
-    return 'light'; // Default to light
+    return 'light';
   });
   const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>(() => {
     const savedLevel = localStorage.getItem('compressionLevel') as CompressionLevel;
     return savedLevel && Object.values(CompressionLevel).includes(savedLevel)
       ? savedLevel
-      : CompressionLevel.ORIGINAL; // Default to original
+      : CompressionLevel.ORIGINAL;
   });
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>(() => localStorage.getItem('selectedDeviceId') || 'default');
-  const [apiBaseUrl, setApiBaseUrl] = useState<string>(() => localStorage.getItem('apiBaseUrl') || DEFAULT_API_BASE_URL);
+  
+  // API Provider state
+  const [apiProvider, setApiProvider] = useState<ApiProvider>(() => (localStorage.getItem('apiProvider') as ApiProvider | null) || ApiProvider.MODELSCOPE);
+  const [modelScopeApiUrl, setModelScopeApiUrl] = useState<string>(() => localStorage.getItem('modelScopeApiUrl') || DEFAULT_MODELSCOPE_API_URL);
+  const [bailianApiKey, setBailianApiKey] = useState<string>(() => localStorage.getItem('bailianApiKey') || '');
 
 
   // PWA install state
@@ -141,9 +144,7 @@ export default function App() {
         return;
       }
       try {
-        // Request permission first to get device labels, otherwise they are blank.
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Stop the tracks immediately after getting permission.
         stream.getTracks().forEach(track => track.stop());
         
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -161,16 +162,13 @@ export default function App() {
         handleError("安装失败，无法找到安装提示。");
         return;
     }
-    // Show the prompt
     installPrompt.prompt();
-    // Wait for the user to respond to the prompt
     installPrompt.userChoice.then((choiceResult) => {
       if (choiceResult.outcome === 'accepted') {
         setNotification({ message: '应用安装成功！', type: 'success' });
       } else {
         setNotification({ message: '应用安装已取消。', type: 'success' });
       }
-      // We can only use the prompt once. Clear it.
       setInstallPrompt(null);
     });
   };
@@ -203,7 +201,6 @@ export default function App() {
     }
   }, [handleError]);
 
-  // Load cached recording and history on mount
   useEffect(() => {
     const loadInitialData = async () => {
       try {
@@ -227,7 +224,6 @@ export default function App() {
     loadInitialData();
   }, []);
 
-  // Effect to manage theme
   useEffect(() => {
     const root = window.document.documentElement;
     if (theme === 'dark') {
@@ -239,33 +235,15 @@ export default function App() {
   }, [theme]);
 
   // Effects to manage settings persistence
-  useEffect(() => {
-    localStorage.setItem('autoCopy', String(autoCopy));
-  }, [autoCopy]);
-
-  useEffect(() => {
-    localStorage.setItem('compressionLevel', compressionLevel);
-  }, [compressionLevel]);
-
-  useEffect(() => {
-    localStorage.setItem('context', context);
-  }, [context]);
-
-  useEffect(() => {
-    localStorage.setItem('language', language);
-  }, [language]);
-
-  useEffect(() => {
-    localStorage.setItem('enableItn', String(enableItn));
-  }, [enableItn]);
-
-  useEffect(() => {
-    localStorage.setItem('selectedDeviceId', selectedDeviceId);
-  }, [selectedDeviceId]);
-
-  useEffect(() => {
-    localStorage.setItem('apiBaseUrl', apiBaseUrl);
-  }, [apiBaseUrl]);
+  useEffect(() => { localStorage.setItem('autoCopy', String(autoCopy)); }, [autoCopy]);
+  useEffect(() => { localStorage.setItem('compressionLevel', compressionLevel); }, [compressionLevel]);
+  useEffect(() => { localStorage.setItem('context', context); }, [context]);
+  useEffect(() => { localStorage.setItem('language', language); }, [language]);
+  useEffect(() => { localStorage.setItem('enableItn', String(enableItn)); }, [enableItn]);
+  useEffect(() => { localStorage.setItem('selectedDeviceId', selectedDeviceId); }, [selectedDeviceId]);
+  useEffect(() => { localStorage.setItem('apiProvider', apiProvider); }, [apiProvider]);
+  useEffect(() => { localStorage.setItem('modelScopeApiUrl', modelScopeApiUrl); }, [modelScopeApiUrl]);
+  useEffect(() => { localStorage.setItem('bailianApiKey', bailianApiKey); }, [bailianApiKey]);
 
   useEffect(() => {
     if (copied) {
@@ -300,7 +278,6 @@ export default function App() {
     detectedLanguage: string;
     audioFile: File;
   }) => {
-    // Sync state with main page
     setAudioFile(result.audioFile);
     
     if (transcriptionMode === 'single') {
@@ -312,12 +289,10 @@ export default function App() {
       setDetectedLanguage('');
     }
 
-    // Show notification for success
     if (result.transcription) {
       setNotification({ message: '输入法模式识别成功', type: 'success' });
     }
 
-    // Add to history
     if (result.transcription) {
       const newHistoryItem: HistoryItem = {
         id: Date.now(),
@@ -329,22 +304,18 @@ export default function App() {
         audioFile: result.audioFile,
       };
 
-      const saveHistory = async () => {
-        try {
-          await addHistoryItem(newHistoryItem);
-          setHistory(prevHistory => [newHistoryItem, ...prevHistory]);
-        } catch (historyError) {
-          console.error("Failed to save history item from PiP:", historyError);
-        }
-      };
-      saveHistory();
+      try {
+        await addHistoryItem(newHistoryItem);
+        setHistory(prevHistory => [newHistoryItem, ...prevHistory]);
+      } catch (historyError) {
+        console.error("Failed to save history item from PiP:", historyError);
+      }
     }
   }, [context, transcriptionMode, transcription]);
 
   const closePip = useCallback(() => {
     if (pipWindow) {
       pipWindow.close();
-      // The 'pagehide' listener will handle state cleanup
     }
   }, [pipWindow]);
 
@@ -361,11 +332,9 @@ export default function App() {
         height: 70,
       });
 
-      // Copy all styles from the main document to the PiP window.
       Array.from(document.querySelectorAll('style, link[rel="stylesheet"]')).forEach(node => {
         pipWin.document.head.appendChild(node.cloneNode(true));
       });
-      // Copy all scripts from the main document's head to ensure JS/Tailwind works.
       Array.from(document.head.querySelectorAll('script')).forEach(script => {
         const newScript = pipWin.document.createElement('script');
         if (script.src) newScript.src = script.src;
@@ -374,7 +343,7 @@ export default function App() {
       });
 
       pipWin.document.title = "输入法模式 - Qwen3-ASR";
-      pipWin.document.documentElement.className = document.documentElement.className; // Copy theme class
+      pipWin.document.documentElement.className = document.documentElement.className;
       pipWin.document.body.style.margin = '0';
       pipWin.document.body.style.overflow = 'hidden';
 
@@ -425,7 +394,7 @@ export default function App() {
       return;
     }
     
-    abortControllerRef.current?.abort(); // Abort previous request if any
+    abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
     
@@ -468,7 +437,15 @@ export default function App() {
       } else {
           onProgress('正在压缩音频（如果需要）...');
           const fileToTranscribe = await compressAudio(file, compressionLevel);
-          const result = await transcribeAudio(fileToTranscribe, context, language, enableItn, apiBaseUrl, onProgress, controller.signal);
+          const result = await transcribeAudio(
+            fileToTranscribe, 
+            context, 
+            language, 
+            enableItn, 
+            { provider: apiProvider, modelScopeApiUrl, bailianApiKey }, 
+            onProgress, 
+            controller.signal
+          );
           finalTranscription = result.transcription;
           finalLanguage = result.detectedLanguage;
 
@@ -532,7 +509,7 @@ export default function App() {
       const duration = (endTime - localStartTime) / 1000;
       setElapsedTime(duration);
     }
-  }, [context, language, enableItn, autoCopy, compressionLevel, handleError, transcriptionMode, transcription, apiBaseUrl]);
+  }, [context, language, enableItn, autoCopy, compressionLevel, handleError, transcriptionMode, transcription, apiProvider, modelScopeApiUrl, bailianApiKey]);
 
   const handleTranscribe = useCallback(async () => {
     if (isRecording && audioUploaderRef.current) {
@@ -637,7 +614,7 @@ export default function App() {
       await clearHistory();
       setHistory([]);
       setNotification({ message: '所有历史记录已清除', type: 'success' });
-      setIsSettingsOpen(false); // Close panel after clearing
+      setIsSettingsOpen(false);
     } catch(err) {
       handleError('清除历史记录失败。');
     }
@@ -649,7 +626,7 @@ export default function App() {
       setTranscription(item.transcription);
       setDetectedLanguage(item.detectedLanguage);
       setContext(item.context);
-      setTranscriptionMode('single'); // Always restore to single mode for clarity
+      setTranscriptionMode('single');
       setNotification({ message: '已从历史记录恢复', type: 'success' });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -665,9 +642,10 @@ export default function App() {
     setTheme('light');
     setCompressionLevel(CompressionLevel.ORIGINAL);
     setSelectedDeviceId('default');
-    setApiBaseUrl(DEFAULT_API_BASE_URL);
+    setApiProvider(ApiProvider.MODELSCOPE);
+    setModelScopeApiUrl(DEFAULT_MODELSCOPE_API_URL);
+    setBailianApiKey('');
     
-    // Close settings panel and show notification
     setIsSettingsOpen(false);
     setNotification({ message: '已恢复默认设置', type: 'success' });
   }, []);
@@ -694,7 +672,7 @@ export default function App() {
     try {
         await addNoteItem(newNote);
         setNotes(prev => [newNote, ...prev]);
-        setTranscription(''); // Clear the editor after saving
+        setTranscription('');
         setNotification({ message: '笔记已保存', type: 'success' });
     } catch (err) {
         handleError('保存笔记失败。');
@@ -860,8 +838,12 @@ export default function App() {
         audioDevices={audioDevices}
         selectedDeviceId={selectedDeviceId}
         setSelectedDeviceId={setSelectedDeviceId}
-        apiBaseUrl={apiBaseUrl}
-        setApiBaseUrl={setApiBaseUrl}
+        apiProvider={apiProvider}
+        setApiProvider={setApiProvider}
+        modelScopeApiUrl={modelScopeApiUrl}
+        setModelScopeApiUrl={setModelScopeApiUrl}
+        bailianApiKey={bailianApiKey}
+        setBailianApiKey={setBailianApiKey}
         onClearHistory={handleClearHistory}
         onRestoreDefaults={handleRestoreDefaults}
         canInstall={!!installPrompt}
@@ -876,7 +858,9 @@ export default function App() {
           language={language}
           enableItn={enableItn}
           selectedDeviceId={selectedDeviceId}
-          apiBaseUrl={apiBaseUrl}
+          apiProvider={apiProvider}
+          modelScopeApiUrl={modelScopeApiUrl}
+          bailianApiKey={bailianApiKey}
         />,
         pipContainer
       )}

@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { transcribeAudio } from '../services/gradioService';
-import { Language } from '../types';
+import { Language, ApiProvider } from '../types';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
 import { CheckIcon } from './icons/CheckIcon';
 import { CloseIcon } from './icons/CloseIcon';
@@ -19,10 +19,22 @@ interface PipViewProps {
   language: Language;
   enableItn: boolean;
   selectedDeviceId: string;
-  apiBaseUrl: string;
+  apiProvider: ApiProvider;
+  modelScopeApiUrl: string;
+  bailianApiKey: string;
 }
 
-export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, context, language, enableItn, selectedDeviceId, apiBaseUrl }) => {
+export const PipView: React.FC<PipViewProps> = ({ 
+  onTranscriptionResult, 
+  theme, 
+  context, 
+  language, 
+  enableItn, 
+  selectedDeviceId, 
+  apiProvider,
+  modelScopeApiUrl,
+  bailianApiKey 
+}) => {
     type Status = 'idle' | 'recording' | 'processing' | 'success' | 'error';
     const [status, setStatus] = useState<Status>('idle');
     const [message, setMessage] = useState<string>('');
@@ -41,9 +53,10 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
         setStatus('processing');
         setMessage('正在识别...');
         try {
-            // Signal isn't used here as there's no cancel button, but the service expects it.
             const controller = new AbortController();
-            const result = await transcribeAudio(audioFile, context, language, enableItn, apiBaseUrl, () => {}, controller.signal);
+            const config = { provider: apiProvider, modelScopeApiUrl, bailianApiKey };
+            const result = await transcribeAudio(audioFile, context, language, enableItn, config, () => {}, controller.signal);
+            
             if (result.transcription) {
                 setMessage(result.transcription);
                 onTranscriptionResult({
@@ -62,7 +75,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
             setMessage(msg);
             setStatus('error');
         }
-    }, [context, language, enableItn, onTranscriptionResult, apiBaseUrl]);
+    }, [context, language, enableItn, onTranscriptionResult, apiProvider, modelScopeApiUrl, bailianApiKey]);
     
     const stopRecording = useCallback(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -72,7 +85,6 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
 
     const handleCancel = useCallback(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-            // Replace onstop to prevent transcription and do a clean stop
             mediaRecorderRef.current.onstop = () => {
                 const stream = mediaRecorderRef.current?.stream;
                 stream?.getTracks().forEach(track => track.stop());
@@ -138,11 +150,10 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
         } else if (status === 'idle' || status === 'success' || status === 'error') {
             startRecording();
         }
-        // Do nothing if processing
     };
 
     const getIcon = () => {
-        const iconClass = "w-6 h-6 text-white"; // Text inside colored box should be white for contrast
+        const iconClass = "w-6 h-6 text-white";
         switch (status) {
             case 'idle':
                 return <MicrophoneIcon className={iconClass} />;

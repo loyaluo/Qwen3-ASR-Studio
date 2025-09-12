@@ -1,3 +1,9 @@
+
+export enum ApiProvider {
+  MODELSCOPE = 'modelscope',
+  BAILIAN = 'bailian',
+}
+
 export enum Language {
   AUTO = "auto",
   CHINESE = "zh",

@@ -229,7 +229,7 @@ export const AudioPreview: React.FC<AudioPreviewProps> = ({ file, onFileChange, 
                     </p>
                     <span className="font-mono text-content-200 ml-2 flex-shrink-0">{formatTime(currentTime)} / {formatTime(duration)}</span>
                 </div>
-                <div ref={waveformRef} className={`w-full h-10 ${isClipping ? 'cursor-crosshair' : 'cursor-pointer'}`} />
+                <div ref={waveformRef} className={`w-full h-10 mt-3 ${isClipping ? 'cursor-crosshair' : 'cursor-pointer'}`} />
             </div>
 
             <div className="flex justify-between items-center -mx-1 -mb-1">

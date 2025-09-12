@@ -15,7 +15,6 @@ async function getClient() {
 
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 2000;
-const API_URL = 'https://c0rpr74ughd0-deploy.space.z.ai/api/asr-inference';
 
 const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -36,10 +35,13 @@ export const transcribeAudio = async (
   context: string,
   language: Language,
   enableItn: boolean,
+  apiBaseUrl: string,
   onProgress: (message: string) => void,
   signal: AbortSignal
 ): Promise<{ transcription: string; detectedLanguage: string }> => {
   
+  const fullApiUrl = apiBaseUrl;
+
   for (let i = 0; i < MAX_RETRIES; i++) {
     try {
       const attempt = i + 1;
@@ -49,7 +51,7 @@ export const transcribeAudio = async (
       const base64Data = await fileToBase64(audioFile);
 
       onProgress('正在发送到 API...');
-      const response = await fetch(API_URL, {
+      const response = await fetch(fullApiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

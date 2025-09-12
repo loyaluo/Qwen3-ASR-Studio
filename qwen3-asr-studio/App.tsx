@@ -50,9 +50,11 @@ declare global {
     }
 }
 
+const DEFAULT_API_BASE_URL = 'https://c0rpr74ughd0-deploy.space.z.ai/api/asr-inference';
+
 export default function App() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [context, setContext] = useState<string>(() => localStorage.getItem('context') || '转录中文时，请用简体。');
+  const [context, setContext] = useState<string>(() => localStorage.getItem('context') || '');
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') as Language | null) || Language.AUTO);
   const [enableItn, setEnableItn] = useState<boolean>(() => localStorage.getItem('enableItn') === 'true');
   const [transcription, setTranscription] = useState<string>('');
@@ -70,6 +72,9 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>('single');
   const resultDisplayRef = useRef<ResultDisplayHandle>(null);
+  const [elapsedTime, setElapsedTime] = useState<number | null>(null);
+  const [realtimeElapsedTime, setRealtimeElapsedTime] = useState<number>(0);
+  const timerIntervalRef = useRef<number | null>(null);
 
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -92,6 +97,7 @@ export default function App() {
   });
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>(() => localStorage.getItem('selectedDeviceId') || 'default');
+  const [apiBaseUrl, setApiBaseUrl] = useState<string>(() => localStorage.getItem('apiBaseUrl') || DEFAULT_API_BASE_URL);
 
 
   // PWA install state
@@ -258,11 +264,36 @@ export default function App() {
   }, [selectedDeviceId]);
 
   useEffect(() => {
+    localStorage.setItem('apiBaseUrl', apiBaseUrl);
+  }, [apiBaseUrl]);
+
+  useEffect(() => {
     if (copied) {
       const timer = setTimeout(() => setCopied(false), 2000);
       return () => clearTimeout(timer);
     }
   }, [copied]);
+
+  useEffect(() => {
+    if (isLoading) {
+        const startTime = Date.now();
+        setRealtimeElapsedTime(0);
+        timerIntervalRef.current = window.setInterval(() => {
+            const elapsed = (Date.now() - startTime) / 1000;
+            setRealtimeElapsedTime(elapsed);
+        }, 100);
+    } else if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+    }
+
+    return () => {
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+        }
+    };
+  }, [isLoading]);
 
   const handleTranscriptionResultFromPip = useCallback(async (result: {
     transcription: string;
@@ -334,13 +365,13 @@ export default function App() {
       Array.from(document.querySelectorAll('style, link[rel="stylesheet"]')).forEach(node => {
         pipWin.document.head.appendChild(node.cloneNode(true));
       });
-      // Selectively copy only the Tailwind config script to ensure it's available before the main script runs.
-      const tailwindConfigScript = Array.from(document.head.querySelectorAll('script')).find(s => s.textContent?.includes('tailwind.config'));
-      if (tailwindConfigScript) {
+      // Copy all scripts from the main document's head to ensure JS/Tailwind works.
+      Array.from(document.head.querySelectorAll('script')).forEach(script => {
         const newScript = pipWin.document.createElement('script');
-        newScript.textContent = tailwindConfigScript.textContent;
+        if (script.src) newScript.src = script.src;
+        newScript.textContent = script.textContent;
         pipWin.document.head.appendChild(newScript);
-      }
+      });
 
       pipWin.document.title = "输入法模式 - Qwen3-ASR";
       pipWin.document.documentElement.className = document.documentElement.className; // Copy theme class
@@ -351,25 +382,6 @@ export default function App() {
       container.id = 'pip-root';
       container.style.height = '100vh';
       pipWin.document.body.appendChild(container);
-
-      // This script will wait for React to render into #pip-root,
-      // then it will load the main Tailwind script, solving the race condition.
-      const bootstrapper = pipWin.document.createElement('script');
-      bootstrapper.textContent = `
-        const targetNode = document.getElementById('pip-root');
-        if (targetNode) {
-          const observer = new MutationObserver(() => {
-            if (targetNode.children.length > 0) {
-              observer.disconnect(); // Stop watching
-              const tailwindScript = document.createElement('script');
-              tailwindScript.src = 'https://cdn.tailwindcss.com';
-              document.head.appendChild(tailwindScript);
-            }
-          });
-          observer.observe(targetNode, { childList: true });
-        }
-      `;
-      pipWin.document.body.appendChild(bootstrapper);
 
       pipWin.addEventListener('pagehide', () => {
         setPipWindow(null);
@@ -400,6 +412,7 @@ export default function App() {
         setDetectedLanguage('');
     }
     setNotification(null);
+    setElapsedTime(null);
     if (file === null) {
       clearCachedRecording().catch(console.error);
       audioUploaderRef.current?.clearInput();
@@ -418,6 +431,8 @@ export default function App() {
     
     setIsLoading(true);
     setNotification(null);
+    setElapsedTime(null);
+    const localStartTime = Date.now();
     
     if (transcriptionMode === 'single') {
         setTranscription('');
@@ -453,7 +468,7 @@ export default function App() {
       } else {
           onProgress('正在压缩音频（如果需要）...');
           const fileToTranscribe = await compressAudio(file, compressionLevel);
-          const result = await transcribeAudio(fileToTranscribe, context, language, enableItn, onProgress, controller.signal);
+          const result = await transcribeAudio(fileToTranscribe, context, language, enableItn, apiBaseUrl, onProgress, controller.signal);
           finalTranscription = result.transcription;
           finalLanguage = result.detectedLanguage;
 
@@ -513,8 +528,11 @@ export default function App() {
     } finally {
       setIsLoading(false);
       setLoadingMessage('');
+      const endTime = Date.now();
+      const duration = (endTime - localStartTime) / 1000;
+      setElapsedTime(duration);
     }
-  }, [context, language, enableItn, autoCopy, compressionLevel, handleError, transcriptionMode, transcription]);
+  }, [context, language, enableItn, autoCopy, compressionLevel, handleError, transcriptionMode, transcription, apiBaseUrl]);
 
   const handleTranscribe = useCallback(async () => {
     if (isRecording && audioUploaderRef.current) {
@@ -639,6 +657,21 @@ export default function App() {
     }
   };
 
+  const handleRestoreDefaults = useCallback(() => {
+    setContext('');
+    setLanguage(Language.AUTO);
+    setEnableItn(false);
+    setAutoCopy(true);
+    setTheme('light');
+    setCompressionLevel(CompressionLevel.ORIGINAL);
+    setSelectedDeviceId('default');
+    setApiBaseUrl(DEFAULT_API_BASE_URL);
+    
+    // Close settings panel and show notification
+    setIsSettingsOpen(false);
+    setNotification({ message: '已恢复默认设置', type: 'success' });
+  }, []);
+
   const handleModeChange = (newMode: TranscriptionMode) => {
     if (newMode !== transcriptionMode) {
         setTranscription('');
@@ -712,6 +745,7 @@ export default function App() {
                 transcriptionMode={transcriptionMode}
                 onModeChange={handleModeChange}
                 onSaveNote={handleSaveNote}
+                elapsedTime={elapsedTime}
               />
                <div className="pt-6">
                  <div className="flex items-stretch gap-3">
@@ -723,7 +757,10 @@ export default function App() {
                     {isLoading ? (
                       <>
                         <LoaderIcon color="white" className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
-                        正在识别...
+                        <span>正在识别...</span>
+                        <span className="font-mono ml-2 tabular-nums w-[60px] text-left">
+                          {realtimeElapsedTime.toFixed(1)}s
+                        </span>
                       </>
                     ) : isRecording ? (
                         '停止并识别'
@@ -823,7 +860,10 @@ export default function App() {
         audioDevices={audioDevices}
         selectedDeviceId={selectedDeviceId}
         setSelectedDeviceId={setSelectedDeviceId}
+        apiBaseUrl={apiBaseUrl}
+        setApiBaseUrl={setApiBaseUrl}
         onClearHistory={handleClearHistory}
+        onRestoreDefaults={handleRestoreDefaults}
         canInstall={!!installPrompt}
         onInstallApp={handleInstallApp}
         disabled={isLoading}
@@ -836,6 +876,7 @@ export default function App() {
           language={language}
           enableItn={enableItn}
           selectedDeviceId={selectedDeviceId}
+          apiBaseUrl={apiBaseUrl}
         />,
         pipContainer
       )}

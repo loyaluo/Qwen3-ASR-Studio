@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { LanguageIcon } from './icons/LanguageIcon';
 import { LoaderIcon } from './icons/LoaderIcon';
@@ -11,6 +12,7 @@ interface ResultDisplayProps {
   transcriptionMode: 'single' | 'notes';
   onModeChange: (mode: 'single' | 'notes') => void;
   onSaveNote: () => void;
+  elapsedTime?: number | null;
 }
 
 export interface ResultDisplayHandle {
@@ -27,7 +29,7 @@ const loadingMessages = [
 ];
 
 export const ResultDisplay = forwardRef<ResultDisplayHandle, ResultDisplayProps>(
-  ({ transcription, setTranscription, detectedLanguage, isLoading, loadingStatus, transcriptionMode, onModeChange, onSaveNote }, ref) => {
+  ({ transcription, setTranscription, detectedLanguage, isLoading, loadingStatus, transcriptionMode, onModeChange, onSaveNote, elapsedTime }, ref) => {
     const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -103,11 +105,20 @@ export const ResultDisplay = forwardRef<ResultDisplayHandle, ResultDisplayProps>
             </button>
           </div>
           <div className="flex items-center gap-2">
-            {transcriptionMode === 'single' && detectedLanguage && !isLoading && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-base-100 text-content-200 border border-base-300">
-                <LanguageIcon className="w-4 h-4 text-brand-primary" />
-                <span>{detectedLanguage}</span>
-              </div>
+            {transcriptionMode === 'single' && !isLoading && (
+              <>
+                {detectedLanguage && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-base-100 text-content-200 border border-base-300">
+                    <LanguageIcon className="w-4 h-4 text-brand-primary" />
+                    <span>{detectedLanguage}</span>
+                  </div>
+                )}
+                {elapsedTime != null && (
+                  <div title="识别耗时" className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-base-100 text-content-200 border border-base-300">
+                      <span>耗时: {elapsedTime.toFixed(2)}s</span>
+                  </div>
+                )}
+              </>
             )}
             {transcriptionMode === 'notes' && !isLoading && (
               <button

